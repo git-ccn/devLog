@@ -10,7 +10,7 @@
         <!-- Left Section: Illustration -->
         <div class="login-left">
           <div class="illustration">
-            <img src="https://img.freepik.com/free-vector/data-extraction-concept-illustration_114360-4766.jpg" alt="illustration" />
+            <img src="../assets/images/auth/login.avif" alt="illustration" />
           </div>
           <div class="register-link">
             还没有账号？ <el-link type="primary" underline="never" @click="router.push('/register')">立即注册</el-link>
@@ -43,7 +43,6 @@
             </el-form-item>
 
             <div class="form-options">
-              <el-checkbox v-model="rememberMe">记住我</el-checkbox>
               <el-link type="info" underline="never" @click="router.push('/forgot-password')">忘记密码</el-link>
             </div>
 
@@ -70,7 +69,6 @@ import { loginApi } from '@/api/user'
 
 const router = useRouter()
 const loading = ref<boolean>(false)
-const rememberMe = ref<boolean>(false)
 const loginForm = reactive({
   phone: '',
   password: ''
@@ -253,8 +251,7 @@ const onLogin = () => {
 
 .form-options {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  justify-content: flex-end;
   margin-bottom: 24px;
 }
 

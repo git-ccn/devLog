@@ -10,7 +10,7 @@
         <!-- Left Section: Illustration -->
         <div class="login-left">
           <div class="illustration">
-            <img src="https://img.freepik.com/free-vector/forgot-password-concept-illustration_114360-1010.jpg" alt="illustration" />
+            <img src="../assets/images/auth/forgot-password.avif" alt="illustration" />
           </div>
           <div class="register-link">
             想起密码了？ <el-link type="primary" underline="never" @click="router.push('/login')">立即登录</el-link>

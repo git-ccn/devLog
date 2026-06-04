@@ -1,4 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router'
+import Login from '@/views/Login.vue'
+import Register from '@/views/Register.vue'
+import ForgotPassword from '@/views/ForgotPassword.vue'
 
 export const routes: Array<RouteRecordRaw> = [
   {
@@ -8,17 +11,17 @@ export const routes: Array<RouteRecordRaw> = [
   {
     path: '/login',
     name: 'Login',
-    component: () => import('@/views/Login.vue')
+    component: Login
   },
   {
     path: '/register',
     name: 'Register',
-    component: () => import('@/views/Register.vue')
+    component: Register
   },
   {
     path: '/forgot-password',
     name: 'ForgotPassword',
-    component: () => import('@/views/ForgotPassword.vue')
+    component: ForgotPassword
   },
   {
     path: '/:pathMatch(.*)*',

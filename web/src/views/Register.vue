@@ -10,7 +10,7 @@
         <!-- Left Section: Illustration -->
         <div class="login-left">
           <div class="illustration">
-            <img src="https://img.freepik.com/free-vector/sign-up-concept-illustration_114360-7885.jpg" alt="illustration" />
+            <img src="../assets/images/auth/register.avif" alt="illustration" />
           </div>
           <div class="register-link">
             已有账号？ <el-link type="primary" underline="never" @click="router.push('/login')">立即登录</el-link>
