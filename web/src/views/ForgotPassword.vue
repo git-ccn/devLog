@@ -13,7 +13,7 @@
             <img src="https://img.freepik.com/free-vector/forgot-password-concept-illustration_114360-1010.jpg" alt="illustration" />
           </div>
           <div class="register-link">
-            想起密码了？ <el-link type="primary" :underline="false" @click="router.push('/login')">立即登录</el-link>
+            想起密码了？ <el-link type="primary" underline="never" @click="router.push('/login')">立即登录</el-link>
           </div>
         </div>
 
@@ -81,10 +81,12 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { Iphone, Lock, Message } from '@element-plus/icons-vue'
 import { forgotPasswordApi, sendCodeApi } from '@/api/user'
+import { v4 as uuidv4 } from 'uuid'
 
 const router = useRouter()
 const loading = ref<boolean>(false)
 const captchaUrl = ref<string>('')
+const captchaUuid = ref<string>('')
 const forgotFormRef = ref()
 
 const forgotForm = reactive({
@@ -96,7 +98,9 @@ const forgotForm = reactive({
 
 const refreshCaptcha = async () => {
   try {
-    const blob = await sendCodeApi()
+    // 生成新的 UUID 标识本次验证码
+    captchaUuid.value = uuidv4()
+    const blob = await sendCodeApi(captchaUuid.value)
     if (captchaUrl.value) {
       URL.revokeObjectURL(captchaUrl.value) // 释放旧内存
     }
@@ -128,7 +132,7 @@ const rules = {
   ],
   code: [
     { required: true, message: '请输入验证码', trigger: 'blur' },
-    { len: 6, message: '验证码为6位数字', trigger: 'blur' }
+    { len: 4, message: '验证码为4位字符', trigger: 'blur' }
   ],
   password: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
@@ -148,16 +152,19 @@ const onReset = () => {
       const res = await forgotPasswordApi({
         phone: forgotForm.phone,
         code: forgotForm.code,
-        password: forgotForm.password
+        password: forgotForm.password,
+        uuid: captchaUuid.value // 携带 UUID 进行后端校验
       })
       if (res.code === 200) {
         ElMessage.success('密码重置成功')
         router.push('/login')
       } else {
         ElMessage.error(res.msg || '重置失败')
+        refreshCaptcha() // 失败自动刷新验证码
       }
     } catch (error: any) {
       // 错误已在拦截器处理
+      refreshCaptcha()
     } finally {
       loading.value = false
     }
@@ -291,8 +298,11 @@ const onReset = () => {
 .captcha-img-wrapper {
   cursor: pointer;
   height: 50px;
+  width: 150px; /* 固定宽度，与后端一致 */
+  flex-shrink: 0; /* 防止被输入框挤压 */
   display: flex;
   align-items: center;
+  justify-content: center;
   background: #f5f7fa;
   border-radius: 12px;
   overflow: hidden;

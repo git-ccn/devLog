@@ -13,7 +13,7 @@
             <img src="https://img.freepik.com/free-vector/data-extraction-concept-illustration_114360-4766.jpg" alt="illustration" />
           </div>
           <div class="register-link">
-            还没有账号？ <el-link type="primary" :underline="false" @click="router.push('/register')">立即注册</el-link>
+            还没有账号？ <el-link type="primary" underline="never" @click="router.push('/register')">立即注册</el-link>
           </div>
         </div>
 
@@ -44,7 +44,7 @@
 
             <div class="form-options">
               <el-checkbox v-model="rememberMe">记住我</el-checkbox>
-              <el-link type="info" :underline="false" @click="router.push('/forgot-password')">忘记密码</el-link>
+              <el-link type="info" underline="never" @click="router.push('/forgot-password')">忘记密码</el-link>
             </div>
 
             <el-form-item>
@@ -52,7 +52,7 @@
             </el-form-item>
 
             <div class="social-login">
-              <el-link type="info" :underline="false">使用社交账号登录</el-link>
+              <el-link type="info" underline="never">使用社交账号登录</el-link>
             </div>
           </el-form>
         </div>

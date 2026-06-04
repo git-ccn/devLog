@@ -18,7 +18,9 @@ public class User {
     
     private String nickname;
 
+    @Column(updatable = false, insertable = false)
     private LocalDateTime createTime;
 
+    @Column(updatable = false, insertable = false)
     private LocalDateTime updateTime;
 }

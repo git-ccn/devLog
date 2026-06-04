@@ -8,7 +8,7 @@ import jakarta.servlet.http.HttpServletResponse;
 public interface UserService {
     Result<?> login(UserDTO userDTO);
     Result<?> register(UserDTO userDTO);
-    Result<?> forgotPassword(UserDTO userDTO, HttpServletRequest request);
+    Result<?> forgotPassword(UserDTO userDTO);
     Result<?> logout();
-    void sendCode(HttpServletRequest request, HttpServletResponse response) throws Exception;
+    void sendCode(String uuid, HttpServletResponse response) throws Exception;
 }

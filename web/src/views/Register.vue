@@ -13,7 +13,7 @@
             <img src="https://img.freepik.com/free-vector/sign-up-concept-illustration_114360-7885.jpg" alt="illustration" />
           </div>
           <div class="register-link">
-            已有账号？ <el-link type="primary" :underline="false" @click="router.push('/login')">立即登录</el-link>
+            已有账号？ <el-link type="primary" underline="never" @click="router.push('/login')">立即登录</el-link>
           </div>
         </div>
 

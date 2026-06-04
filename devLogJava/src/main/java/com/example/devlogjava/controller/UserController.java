@@ -26,8 +26,8 @@ public class UserController {
     }
 
     @PostMapping("/forgot-password")
-    public Result<?> forgotPassword(@RequestBody UserDTO userDTO, HttpServletRequest request) {
-        return userService.forgotPassword(userDTO, request);
+    public Result<?> forgotPassword(@RequestBody UserDTO userDTO) {
+        return userService.forgotPassword(userDTO);
     }
 
     @PostMapping("/logout")
@@ -36,7 +36,7 @@ public class UserController {
     }
 
     @GetMapping("/send-code")
-    public void sendCode(HttpServletRequest request, HttpServletResponse response) throws Exception {
-        userService.sendCode(request, response);
+    public void sendCode(@RequestParam String uuid, HttpServletResponse response) throws Exception {
+        userService.sendCode(uuid, response);
     }
 }

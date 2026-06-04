@@ -23,6 +23,7 @@ export interface ForgotPasswordData {
   phone: string
   code: string
   password: string // 新密码
+  uuid: string // 图形验证码唯一标识
 }
 
 /**
@@ -55,7 +56,8 @@ export const logoutApi = () => {
 
 /**
  * 获取图形验证码图片
+ * @param uuid 唯一标识
  */
-export const sendCodeApi = () => {
-  return requireInstance.get<any, Blob>('/user/send-code', { responseType: 'blob' })
+export const sendCodeApi = (uuid: string) => {
+  return requireInstance.get<any, Blob>(`/user/send-code?uuid=${uuid}`, { responseType: 'blob' })
 }

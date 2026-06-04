@@ -7,14 +7,15 @@ import com.example.devlogjava.mapper.UserMapper;
 import com.example.devlogjava.common.Result;
 import com.example.devlogjava.common.JwtUtils;
 import com.wf.captcha.SpecCaptcha;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -27,6 +28,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    // Redis Key 前缀
+    private static final String CAPTCHA_KEY_PREFIX = "captcha:";
 
     @Override
     public Result<?> login(UserDTO userDTO) {
@@ -80,14 +87,15 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Result<?> forgotPassword(UserDTO userDTO, HttpServletRequest request) {
-        // 1. 从 Session 中获取验证码
-        String sessionCode = (String) request.getSession().getAttribute("captcha");
+    public Result<?> forgotPassword(UserDTO userDTO) {
+        // 1. 从 Redis 中获取验证码
+        String redisKey = CAPTCHA_KEY_PREFIX + userDTO.getUuid();
+        String sessionCode = redisTemplate.opsForValue().get(redisKey);
         
         // 2. 校验验证码 (忽略大小写)
         if (userDTO.getCode() == null || sessionCode == null || !sessionCode.equalsIgnoreCase(userDTO.getCode())) {
-            request.getSession().removeAttribute("captcha");
-            return Result.error("验证码错误");
+            redisTemplate.delete(redisKey);
+            return Result.error("验证码错误或已过期");
         }
 
         // 3. 根据手机号查询用户
@@ -101,7 +109,7 @@ public class UserServiceImpl implements UserService {
         userMapper.save(user);
 
         // 5. 清除验证码
-        request.getSession().removeAttribute("captcha");
+        redisTemplate.delete(redisKey);
 
         return Result.success("密码重置成功");
     }
@@ -113,7 +121,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void sendCode(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public void sendCode(String uuid, HttpServletResponse response) throws Exception {
         // 设置响应头
         response.setContentType("image/gif");
         response.setHeader("Pragma", "No-cache");
@@ -121,11 +129,12 @@ public class UserServiceImpl implements UserService {
         response.setDateHeader("Expires", 0);
 
         // 生成图形验证码 (宽, 高, 位数)
-        SpecCaptcha specCaptcha = new SpecCaptcha(130, 48, 4);
+        SpecCaptcha specCaptcha = new SpecCaptcha(150, 50, 4);
         specCaptcha.setFont(SpecCaptcha.FONT_1);
         
-        // 将验证码文本存入 Session (转为小写存入，方便校验)
-        request.getSession().setAttribute("captcha", specCaptcha.text().toLowerCase());
+        // 将验证码文本存入 Redis，有效期 2 分钟
+        String redisKey = CAPTCHA_KEY_PREFIX + uuid;
+        redisTemplate.opsForValue().set(redisKey, specCaptcha.text().toLowerCase(), 2, TimeUnit.MINUTES);
         
         // 输出图片流
         specCaptcha.out(response.getOutputStream());

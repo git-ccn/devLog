@@ -15,6 +15,16 @@ export default defineConfig({
       resolvers: [ElementPlusResolver()],
     }),
   ],
+  server: {
+    proxy: {
+      '/devLog': {
+        target: 'http://localhost:8081',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/devLog/, ''),
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': '/src'

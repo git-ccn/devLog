@@ -2,10 +2,12 @@
 </script>
 
 <template>
-  <!-- 使用keep-alive缓存路由组件状态，保留组件实例避免重复销毁重建 -->
-  <keep-alive >
-    <router-view />
-  </keep-alive>
+  <!-- 使用 v-slot 配合 keep-alive 缓存路由组件状态 -->
+  <router-view v-slot="{ Component }">
+    <keep-alive>
+      <component :is="Component" />
+    </keep-alive>
+  </router-view>
 </template>
 
 <style scoped>
