@@ -11,7 +11,9 @@
   "dependencies": {
     "@types/uuid": "^10.0.0",
     "axios": "^1.17.0",
+    "echarts": "^5.6.0",
     "element-plus": "^2.14.1",
+    "monaco-editor": "^0.52.2",
     "uuid": "^14.0.0",
     "vue": "^3.2.47",
     "vue-router": "4"

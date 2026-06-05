@@ -13,7 +13,7 @@
             <img src="../assets/images/auth/login.avif" alt="illustration" />
           </div>
           <div class="register-link">
-            还没有账号？ <el-link type="primary" underline="never" @click="router.push('/register')">立即注册</el-link>
+            还没有账号？ <el-link type="primary" underline="never" @click="emit('switch', 'register')">立即注册</el-link>
           </div>
         </div>
 
@@ -43,7 +43,7 @@
             </el-form-item>
 
             <div class="form-options">
-              <el-link type="info" underline="never" @click="router.push('/forgot-password')">忘记密码</el-link>
+              <el-link type="info" underline="never" @click="emit('switch', 'forgot-password')">忘记密码</el-link>
             </div>
 
             <el-form-item>
@@ -66,6 +66,10 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { Iphone, Lock } from '@element-plus/icons-vue'
 import { loginApi } from '@/api/user'
+
+const emit = defineEmits<{
+  (e: 'switch', mode: 'login' | 'register' | 'forgot-password'): void
+}>()
 
 const router = useRouter()
 const loading = ref<boolean>(false)
@@ -99,7 +103,7 @@ const onLogin = () => {
       if (res.code === 200) {
         localStorage.setItem('token', res.data.token)
         ElMessage.success('登录成功')
-        router.push('/')
+        router.push('/home')
       } else {
         ElMessage.error(res.msg || '登录失败')
       }

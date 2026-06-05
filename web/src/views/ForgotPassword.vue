@@ -13,7 +13,7 @@
             <img src="../assets/images/auth/forgot-password.avif" alt="illustration" />
           </div>
           <div class="register-link">
-            想起密码了？ <el-link type="primary" underline="never" @click="router.push('/login')">立即登录</el-link>
+            想起密码了？ <el-link type="primary" underline="never" @click="emit('switch', 'login')">立即登录</el-link>
           </div>
         </div>
 
@@ -78,12 +78,14 @@
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
 import { Iphone, Lock, Message } from '@element-plus/icons-vue'
 import { forgotPasswordApi, sendCodeApi } from '@/api/user'
 import { v4 as uuidv4 } from 'uuid'
 
-const router = useRouter()
+const emit = defineEmits<{
+  (e: 'switch', mode: 'login' | 'register' | 'forgot-password'): void
+}>()
+
 const loading = ref<boolean>(false)
 const captchaUrl = ref<string>('')
 const captchaUuid = ref<string>('')
@@ -157,7 +159,7 @@ const onReset = () => {
       })
       if (res.code === 200) {
         ElMessage.success('密码重置成功')
-        router.push('/login')
+        emit('switch', 'login')
       } else {
         ElMessage.error(res.msg || '重置失败')
         refreshCaptcha() // 失败自动刷新验证码

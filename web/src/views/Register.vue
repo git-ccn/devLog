@@ -13,7 +13,7 @@
             <img src="../assets/images/auth/register.avif" alt="illustration" />
           </div>
           <div class="register-link">
-            已有账号？ <el-link type="primary" underline="never" @click="router.push('/login')">立即登录</el-link>
+            已有账号？ <el-link type="primary" underline="never" @click="emit('switch', 'login')">立即登录</el-link>
           </div>
         </div>
 
@@ -65,11 +65,13 @@
 <script lang="ts" setup>
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
 import { Iphone, Lock } from '@element-plus/icons-vue'
 import { registerApi } from '@/api/user'
 
-const router = useRouter()
+const emit = defineEmits<{
+  (e: 'switch', mode: 'login' | 'register' | 'forgot-password'): void
+}>()
+
 const loading = ref<boolean>(false)
 const registerFormRef = ref()
 
@@ -115,7 +117,7 @@ const onRegister = () => {
       })
       if (res.code === 200) {
         ElMessage.success('注册成功')
-        router.push('/login')
+        emit('switch', 'login')
       } else {
         ElMessage.error(res.msg || '注册失败')
       }
