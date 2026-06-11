@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.devlogjava.mapper.InterviewMapper">
+
+    <select id="query" resultType="com.example.devlogjava.entity.interview.InterviewPo">
+        SELECT i.id, i.title, i.category_id AS categoryId, i.status, i.difficulty, i.question,
+               c.name AS categoryName,
+               a.answer AS myAnswer,
+               a.accuracy AS accuracy,
+               a.solution AS solution,
+               i.created_at AS createdAt, i.updated_at AS updatedAt
+        FROM interview i
+        LEFT JOIN note_category c ON c.id = i.category_id
+        LEFT JOIN interview_ans a ON a.interview_id = i.id
+        <where>
+            <if test="query.categoryId != null and query.categoryId != ''">
+                AND i.category_id = #{query.categoryId}
+            </if>
+            <if test="query.status != null and query.status != ''">
+                AND i.status = #{query.status}
+            </if>
+            <if test="query.difficulty != null and query.difficulty != ''">
+                AND i.difficulty = #{query.difficulty}
+            </if>
+            <if test="query.keyword != null and query.keyword != ''">
+                AND i.title LIKE CONCAT('%', #{query.keyword}, '%')
+            </if>
+        </where>
+        ORDER BY i.updated_at DESC
+    </select>
+
+    <select id="queryQuestionById" resultType="String">
+        SELECT question FROM interview WHERE id = #{interviewId}
+    </select>
+
+    <insert id="insertAns" parameterType="com.example.devlogjava.entity.interview.InterviewAnsPo">
+        INSERT INTO interview_ans (id, interview_id, answer, accuracy, solution)
+        VALUES (#{id}, #{interviewId}, #{answer}, #{accuracy}, #{solution})
+    </insert>
+
+    <update id="updateAnsByInterviewId">
+        UPDATE interview_ans
+        SET answer = #{answer}, accuracy = #{accuracy}, solution = #{solution}, updated_at = NOW()
+        WHERE interview_id = #{interviewId}
+    </update>
+
+    <update id="updateStatusByInterviewId">
+        UPDATE interview
+        SET status = #{status}, updated_at = NOW()
+        WHERE id = #{interviewId}
+    </update>
+
+</mapper>

@@ -13,12 +13,15 @@
     "axios": "^1.17.0",
     "echarts": "^5.6.0",
     "element-plus": "^2.14.1",
+    "markdown-it": "^14.2.0",
+    "md-editor-v3": "^6.5.1",
     "monaco-editor": "^0.52.2",
     "uuid": "^14.0.0",
     "vue": "^3.2.47",
     "vue-router": "4"
   },
   "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
     "@vitejs/plugin-vue": "^4.1.0",
     "typescript": "^4.9.3",
     "unplugin-auto-import": "^21.0.0",

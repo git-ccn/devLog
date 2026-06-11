@@ -6,41 +6,73 @@
           <el-icon class="title-icon"><Document /></el-icon>
           代码片段
         </span>
-        <div class="view-more">
+        <div class="view-more" @click="goToSnippets">
           查看更多<el-icon><ArrowRight /></el-icon>
         </div>
       </div>
     </template>
     <div class="snippet-list">
-      <div v-for="(item, index) in snippets" :key="index" class="snippet-item">
+      <div v-for="item in snippets" :key="item.id" class="snippet-item" @click="goToSnippetByName(item.title)">
         <div class="item-left">
           <span class="snippet-title">{{ item.title }}</span>
         </div>
         <div class="item-right">
-          <span class="lang">{{ item.lang }}</span>
-          <el-icon class="copy-icon" @click="handleCopy(item.title)"><CopyDocument /></el-icon>
+          <span class="lang">{{ item.language }}</span>
+          <el-icon class="copy-icon" @click.stop="handleCopy(item.content)"><CopyDocument /></el-icon>
         </div>
       </div>
+      <div v-if="!snippets.length" class="empty-text">暂无代码片段</div>
     </div>
   </el-card>
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Document, ArrowRight, CopyDocument } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { getSnippetApi, type SnippetRes } from '@/api/snippets'
+import { useRouter } from 'vue-router'
 
-const snippets = ref([
-  { title: '二分查找算法', lang: 'Java' },
-  { title: '深拷贝函数', lang: 'JavaScript' },
-  { title: 'JWT Token验证', lang: 'Java' },
-  { title: '防抖函数', lang: 'JavaScript' },
-  { title: 'MySQL分页查询', lang: 'SQL' }
-])
+const snippets = ref<SnippetRes[]>([])
+const router = useRouter()
 
-const handleCopy = (title: string) => {
-  ElMessage.success(`已复制: ${title}`)
+const loadSnippets = async () => {
+  try {
+    const res = await getSnippetApi({
+      showDeleted: false,
+      pageNum: 1,
+      pageSize: 5
+    })
+    if (res.code !== 200) return
+    snippets.value = Array.isArray(res.data) ? (res.data as SnippetRes[]) : []
+  } catch {}
 }
+
+const handleCopy = async (content: string) => {
+  try {
+    await navigator.clipboard.writeText(content)
+    ElMessage.success('已复制到剪贴板')
+  } catch {
+    ElMessage.error('复制失败')
+  }
+}
+
+const goToSnippets = () => {
+  void router.push('/home/snippets')
+}
+
+const goToSnippetByName = (title: string) => {
+  void router.push({
+    path: '/home/snippets',
+    query: {
+      keyword: title
+    }
+  })
+}
+
+onMounted(() => {
+  void loadSnippets()
+})
 </script>
 
 <style scoped>
@@ -90,6 +122,13 @@ const handleCopy = (title: string) => {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.empty-text {
+  font-size: 13px;
+  color: #909399;
+  text-align: center;
+  padding: 24px 0;
 }
 
 .snippet-item {

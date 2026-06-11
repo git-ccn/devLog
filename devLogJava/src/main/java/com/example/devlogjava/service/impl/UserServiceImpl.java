@@ -1,8 +1,8 @@
 package com.example.devlogjava.service.impl;
 
 import com.example.devlogjava.service.UserService;
-import com.example.devlogjava.dto.UserDTO;
-import com.example.devlogjava.entity.User;
+import com.example.devlogjava.entity.UserPo;
+import com.example.devlogjava.dto.UserReq;
 import com.example.devlogjava.mapper.UserMapper;
 import com.example.devlogjava.common.Result;
 import com.example.devlogjava.common.JwtUtils;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -36,9 +37,9 @@ public class UserServiceImpl implements UserService {
     private static final String CAPTCHA_KEY_PREFIX = "captcha:";
 
     @Override
-    public Result<?> login(UserDTO userDTO) {
+    public Result<?> login(UserReq userReq) {
         // 1. 根据手机号查询用户
-        User user = userMapper.findByPhone(userDTO.getPhone());
+        UserPo user = userMapper.findByPhone(userReq.getPhone());
         
         // 2. 校验用户是否存在
         if (user == null) {
@@ -46,7 +47,7 @@ public class UserServiceImpl implements UserService {
         }
         
         // 3. 校验密码 (使用 BCrypt 校验)
-        if (!passwordEncoder.matches(userDTO.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(userReq.getPassword(), user.getPassword())) {
             return Result.error("密码错误");
         }
         
@@ -66,9 +67,9 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Result<?> register(UserDTO userDTO) {
+    public Result<?> register(UserReq userReq) {
          // 1. 根据手机号查询用户是否存在
-        User existUser = userMapper.findByPhone(userDTO.getPhone());
+        UserPo existUser = userMapper.findByPhone(userReq.getPhone());
         if (existUser != null) {
             return Result.error("该手机号已注册");
         }
@@ -77,36 +78,36 @@ public class UserServiceImpl implements UserService {
         String randomNickname = "用户" + String.format("%06d", (int)(Math.random() * 1000000));
         
         // 3. 构建用户实体并保存
-        User user = new User();
-        user.setPhone(userDTO.getPhone());
+        UserPo user = new UserPo();
+        user.setId(UUID.randomUUID().toString().replace("-", ""));
+        user.setPhone(userReq.getPhone());
         // 使用 BCrypt 加密密码
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
+        user.setPassword(passwordEncoder.encode(userReq.getPassword()));
         user.setNickname(randomNickname);
-        userMapper.save(user); // 注意：JpaRepository 使用 save 而不是 insert
+        userMapper.insert(user);
         return Result.success("注册成功");
     }
 
     @Override
-    public Result<?> forgotPassword(UserDTO userDTO) {
+    public Result<?> forgotPassword(UserReq userReq) {
         // 1. 从 Redis 中获取验证码
-        String redisKey = CAPTCHA_KEY_PREFIX + userDTO.getUuid();
+        String redisKey = CAPTCHA_KEY_PREFIX + userReq.getUuid();
         String sessionCode = redisTemplate.opsForValue().get(redisKey);
         
         // 2. 校验验证码 (忽略大小写)
-        if (userDTO.getCode() == null || sessionCode == null || !sessionCode.equalsIgnoreCase(userDTO.getCode())) {
+        if (userReq.getCode() == null || sessionCode == null || !sessionCode.equalsIgnoreCase(userReq.getCode())) {
             redisTemplate.delete(redisKey);
             return Result.error("验证码错误或已过期");
         }
 
         // 3. 根据手机号查询用户
-        User user = userMapper.findByPhone(userDTO.getPhone());
+        UserPo user = userMapper.findByPhone(userReq.getPhone());
         if (user == null) {
             return Result.error("用户不存在");
         }
 
         // 4. 重置密码 (加密)
-        user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
-        userMapper.save(user);
+        userMapper.updatePasswordById(user.getId(), passwordEncoder.encode(userReq.getPassword()));
 
         // 5. 清除验证码
         redisTemplate.delete(redisKey);

@@ -32,7 +32,7 @@
         <el-dropdown trigger="click" @command="handleCommand">
           <div class="user-profile">
             <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-            <span class="username">Admin</span>
+            <span class="username">{{ nickname }}</span>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
@@ -49,46 +49,82 @@
       <!-- 侧边工具栏 -->
       <aside class="side-toolbar">
         <div class="toolbar-top">
-          <div class="tool-item active"><el-icon><HomeFilled /></el-icon></div>
-          <div class="tool-item"><el-icon><Document /></el-icon></div>
-          <div class="tool-item"><el-icon><Notebook /></el-icon></div>
-          <div class="tool-item"><el-icon><ChatLineSquare /></el-icon></div>
-          <div class="tool-item"><el-icon><Odometer /></el-icon></div>
+          <div
+            v-for="item in toolbarTopItems"
+            :key="item.path"
+            class="tool-item"
+            :class="{ active: activeNav === item.path }"
+            @click="go(item.path)"
+          >
+            <el-icon><component :is="item.icon" /></el-icon>
+          </div>
         </div>
         <div class="toolbar-bottom">
-          <div class="tool-item"><el-icon><Setting /></el-icon></div>
+          <div
+            v-for="item in toolbarBottomItems"
+            :key="item.path"
+            class="tool-item"
+            :class="{ active: activeNav === item.path }"
+            @click="go(item.path)"
+          >
+            <el-icon><component :is="item.icon" /></el-icon>
+          </div>
         </div>
       </aside>
 
       <!-- 主内容区域 - 仪表盘网格 -->
       <main class="main-content">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <Suspense>
+            <component :is="Component" />
+            <template #fallback>
+              <div class="route-loading">
+                <el-icon class="route-loading-icon"><Loading /></el-icon>
+                <div class="route-loading-text">页面加载中...</div>
+              </div>
+            </template>
+          </Suspense>
+        </router-view>
       </main>
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { markRaw, ref, watch } from 'vue'
+import { markRaw, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
-  Monitor, Search, Notebook, ChatLineSquare, Odometer, Setting,
-  HomeFilled, Collection, Grid, ChatDotRound, Bell, Document
+  Monitor, Search, Notebook, ChatLineSquare, Setting, Loading,
+  HomeFilled, Document
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 const logoUrl = ref('')
 const activeNav = ref('/home/dashboard')
+const nickname = ref('Admin')
+
+onMounted(() => {
+  try {
+    const rawUser = localStorage.getItem('user')
+    if (rawUser) {
+      const user = JSON.parse(rawUser)
+      if (user?.nickname) nickname.value = user.nickname
+    }
+  } catch {}
+})
 
 const navItems = [
-  { name: '代码片段管理器', path: '/home/snippets', icon: markRaw(Document) },
-  { name: '技术笔记', path: '/home/notes', icon: markRaw(Notebook) },
-  { name: '面试题库', path: '/home/interview', icon: markRaw(ChatLineSquare) },
-  { name: '仪表盘', path: '/home/dashboard', icon: markRaw(Odometer) },
-  { name: '系统功能', path: '/home/system', icon: markRaw(Setting) },
+  { name: '首页', path: '/home/dashboard', icon: markRaw(HomeFilled), group: 'top' as const },
+  { name: '代码片段管理器', path: '/home/snippets', icon: markRaw(Document), group: 'top' as const },
+  { name: '技术笔记', path: '/home/notes', icon: markRaw(Notebook), group: 'top' as const },
+  { name: '面试题库', path: '/home/interview', icon: markRaw(ChatLineSquare), group: 'top' as const },
+  { name: '系统功能', path: '/home/system', icon: markRaw(Setting), group: 'bottom' as const },
 ]
+
+const toolbarTopItems = navItems.filter((i) => i.group === 'top').map(({ path, icon }) => ({ path, icon }))
+const toolbarBottomItems = navItems.filter((i) => i.group === 'bottom').map(({ path, icon }) => ({ path, icon }))
 
 watch(
   () => route.path,
@@ -105,6 +141,8 @@ const go = (path: string) => {
 const handleCommand = (command: string) => {
   if (command === 'logout') {
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    nickname.value = 'Admin'
     ElMessage.success('已退出登录')
     router.push('/login')
   }
@@ -277,6 +315,34 @@ const handleCommand = (command: string) => {
   flex: 1;
   overflow: auto;
   background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+}
+
+.route-loading {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  color: #909399;
+}
+
+.route-loading-icon {
+  font-size: 22px;
+  animation: route-spin 1s linear infinite;
+}
+
+.route-loading-text {
+  font-size: 13px;
+}
+
+@keyframes route-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* 响应式调整 */

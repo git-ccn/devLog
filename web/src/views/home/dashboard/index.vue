@@ -19,11 +19,11 @@
 </template>
 
 <script lang="ts" setup>
-import SnippetCard from '../components/SnippetCard.vue'
-import NoteCard from '../components/NoteCard.vue'
-import InterviewCard from '../components/InterviewCard.vue'
-import SystemCard from '../components/SystemCard.vue'
-import DashboardStats from '../components/DashboardStats.vue'
+import SnippetCard from './components/SnippetCard.vue'
+import NoteCard from './components/NoteCard.vue'
+import InterviewCard from './components/InterviewCard.vue'
+import SystemCard from './components/SystemCard.vue'
+import DashboardStats from './components/DashboardStats.vue'
 </script>
 
 <style scoped>

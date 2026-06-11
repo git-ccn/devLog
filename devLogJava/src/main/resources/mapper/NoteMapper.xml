@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.devlogjava.mapper.NoteMapper">
+
+    <insert id="insertNote">
+        INSERT INTO note_note (
+            id,
+            title,
+            summary,
+            content,
+            category,
+            category_id,
+            status,
+            read_time,
+            deleted,
+            created_at,
+            updated_at
+        ) VALUES (
+            #{id},
+            #{title},
+            #{summary},
+            #{content},
+            #{category},
+            #{categoryId},
+            #{status},
+            #{readTime},
+            #{deleted},
+            NOW(),
+            NOW()
+        )
+    </insert>
+
+    <update id="updateNote">
+        UPDATE note_note
+        SET title = #{title},
+            summary = #{summary},
+            content = #{content},
+            category = #{category},
+            category_id = #{categoryId},
+            status = #{status},
+            read_time = #{readTime},
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND deleted = 0
+    </update>
+
+    <delete id="deleteNoteById">
+        DELETE FROM note_note
+        WHERE id = #{id}
+    </delete>
+
+    <delete id="deleteNoteTagsByNoteId">
+        DELETE FROM note_note_tag
+        WHERE note_id = #{noteId}
+    </delete>
+
+    <select id="queryCategoryById" resultType="NoteOptionPo">
+        SELECT c.id,
+               c.name
+        FROM note_category c
+        WHERE c.id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="queryTagsByNames" resultType="NoteOptionPo">
+        SELECT t.id,
+               t.name
+        FROM note_tag t
+        WHERE t.name IN
+        <foreach collection="names" item="name" open="(" separator="," close=")">
+            #{name}
+        </foreach>
+    </select>
+
+    <insert id="insertTags">
+        INSERT INTO note_tag (
+            id,
+            name,
+            created_at,
+            updated_at
+        ) VALUES
+        <foreach collection="tags" item="tag" separator=",">
+            (
+                #{tag.id},
+                #{tag.name},
+                NOW(),
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+    <insert id="insertNoteTags">
+        INSERT INTO note_note_tag (
+            id,
+            note_id,
+            tag_id,
+            created_at
+        ) VALUES
+        <foreach collection="rows" item="row" separator=",">
+            (
+                #{row.id},
+                #{row.noteId},
+                #{row.tagId},
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+    <sql id="noteWhere">
+        AND n.deleted = 0
+        <if test="query.categoryId != null and query.categoryId != ''">
+            AND n.category_id = #{query.categoryId}
+        </if>
+        <if test="query.status != null and query.status != ''">
+            AND n.status = #{query.status}
+        </if>
+        <if test="query.keyword != null and query.keyword != ''">
+            AND n.title LIKE CONCAT('%', #{query.keyword}, '%')
+        </if>
+        <if test="query.tagIds != null and query.tagIds.size > 0">
+            AND EXISTS (
+                SELECT 1
+                FROM note_note_tag nt2
+                WHERE nt2.note_id = n.id
+                  AND nt2.tag_id IN
+                  <foreach collection="query.tagIds" item="tid" open="(" separator="," close=")">
+                      #{tid}
+                  </foreach>
+            )
+        </if>
+    </sql>
+
+    <select id="query" resultType="NotePo">
+        SELECT n.id,
+               n.title,
+               n.summary,
+               n.content,
+               IFNULL(c.name, n.category) AS category,
+               n.status,
+               n.read_time,
+               n.deleted,
+               n.created_at,
+               n.updated_at
+        FROM note_note n
+        LEFT JOIN note_category c ON c.id = n.category_id
+        <where>
+            <include refid="noteWhere" />
+        </where>
+        ORDER BY n.updated_at DESC
+    </select>
+
+    <select id="queryPage" resultType="NotePo">
+        SELECT n.id,
+               n.title,
+               n.summary,
+               n.content,
+               IFNULL(c.name, n.category) AS category,
+               n.status,
+               n.read_time,
+               n.deleted,
+               n.created_at,
+               n.updated_at
+        FROM note_note n
+        LEFT JOIN note_category c ON c.id = n.category_id
+        <where>
+            <include refid="noteWhere" />
+        </where>
+        ORDER BY n.updated_at DESC
+    </select>
+
+    <select id="queryNoteTagsByNoteIds" resultType="NoteTagPo">
+        SELECT nt.note_id,
+               nt.tag_id,
+               t.name AS tag_name
+        FROM note_note_tag nt
+        JOIN note_tag t ON t.id = nt.tag_id
+        WHERE nt.note_id IN
+        <foreach collection="noteIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        ORDER BY t.name ASC
+    </select>
+
+    <select id="queryTags" resultType="NoteOptionPo">
+        SELECT t.id,
+               t.name
+        FROM note_tag t
+        <where>
+            <if test="name != null and name != ''">
+                AND t.name LIKE CONCAT('%', #{name}, '%')
+            </if>
+        </where>
+        ORDER BY t.name ASC
+    </select>
+
+    <select id="queryCategories" resultType="NoteOptionPo">
+        SELECT c.id,
+               c.name,
+               COUNT(n.id) AS count
+        FROM note_category c
+        LEFT JOIN note_note n ON n.category_id = c.id
+            AND n.deleted = 0
+        GROUP BY c.id, c.name
+        ORDER BY c.updated_at DESC
+    </select>
+
+    <select id="queryStats" resultType="NoteStatsPo">
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN n.status = 'done' THEN 1 ELSE 0 END) AS done,
+               SUM(CASE WHEN n.status = 'updating' THEN 1 ELSE 0 END) AS updating,
+               SUM(CASE WHEN n.updated_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN 1 ELSE 0 END) AS month
+        FROM note_note n
+        WHERE n.deleted = 0
+    </select>
+</mapper>

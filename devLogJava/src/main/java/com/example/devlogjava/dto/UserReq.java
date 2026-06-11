@@ -3,7 +3,7 @@ package com.example.devlogjava.dto;
 import lombok.Data;
 
 @Data
-public class UserDTO {
+public class UserReq {
     private String phone;
     private String password;
     private String email;

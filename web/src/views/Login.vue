@@ -102,6 +102,7 @@ const onLogin = () => {
       })
       if (res.code === 200) {
         localStorage.setItem('token', res.data.token)
+        localStorage.setItem('user', JSON.stringify(res.data.user || {}))
         ElMessage.success('登录成功')
         router.push('/home')
       } else {

@@ -1,10 +1,14 @@
 package com.example.devlogjava.mapper;
 
-import com.example.devlogjava.entity.User;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import com.example.devlogjava.entity.UserPo;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
-@Repository
-public interface UserMapper extends JpaRepository<User, Long> {
-    User findByPhone(String phone);
+@Mapper
+public interface UserMapper {
+    UserPo findByPhone(@Param("phone") String phone);
+
+    int insert(UserPo user);
+
+    int updatePasswordById(@Param("id") String id, @Param("password") String password);
 }

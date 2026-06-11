@@ -37,24 +37,47 @@
 </template>
 
 <script lang="ts" setup>
-import { markRaw, ref } from 'vue'
+import { markRaw, onMounted, ref } from 'vue'
 import { ChatLineSquare, ArrowRight, Aim, StarFilled, RefreshRight, CircleCheck } from '@element-plus/icons-vue'
+import { getInterviewApi, type InterviewRes } from '@/api/interview'
 
 type QuestionStatus = 'unknown' | 'reviewing' | 'mastered'
 
-const questions = ref([
-  { title: 'HashMap的实现原理', topic: 'Java', status: 'unknown' as const },
-  { title: 'IOC和AOP的区别', topic: 'Spring', status: 'unknown' as const },
-  { title: 'CAP理论的三选二', topic: '分布式', status: 'unknown' as const },
-  { title: '索引失效的常见场景', topic: 'MySQL', status: 'unknown' as const },
-  { title: '快速排序的实现', topic: '算法', status: 'unknown' as const }
-])
+interface QuestionItem {
+  title: string
+  topic: string
+  status: QuestionStatus
+}
+
+const questions = ref<QuestionItem[]>([])
+
+const statusMap: Record<string, QuestionStatus> = {
+  todo: 'unknown',
+  learning: 'reviewing',
+  mastered: 'mastered'
+}
 
 const statusIconMap: Record<QuestionStatus, unknown> = {
   unknown: markRaw(StarFilled),
   reviewing: markRaw(RefreshRight),
   mastered: markRaw(CircleCheck)
 }
+
+onMounted(async () => {
+  try {
+    const res = await getInterviewApi()
+    const list = (res as any)?.data as InterviewRes[] | undefined
+    if (Array.isArray(list) && list.length > 0) {
+      questions.value = list.slice(0, 5).map((q) => ({
+        title: q.title,
+        topic: q.category || '',
+        status: statusMap[q.status] || 'unknown'
+      }))
+    }
+  } catch {
+    // 接口不可用时保持为空
+  }
+})
 </script>
 
 <style scoped>

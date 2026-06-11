@@ -39,13 +39,15 @@
           <div class="tag-grid">
             <el-tag
               v-for="tag in allTags"
-              :key="tag"
+              :key="tag.id || tag.name"
               class="tag-chip"
-              :effect="query.tag === tag ? 'dark' : 'plain'"
-              :type="query.tag === tag ? 'primary' : 'info'"
-              @click="toggleTag(tag)"
+              :effect="query.tag === tag.name ? 'dark' : 'plain'"
+              :type="query.tag === tag.name ? 'primary' : 'info'"
+              @click="toggleTag(tag.name)"
+              closable
+              @close.stop="deleteTag(tag)"
             >
-              {{ tag }}
+              {{ tag.name }}
             </el-tag>
           </div>
         </el-card>
@@ -76,17 +78,6 @@
             </div>
 
             <div class="toolbar-right">
-              <div class="toolbar-pager">
-                <span class="muted total">{{ filteredItems.length }} 条</span>
-                <el-pagination
-                  v-model:current-page="pagination.page"
-                  :page-size="pagination.pageSize"
-                  layout="prev, pager, next"
-                  :total="filteredItems.length"
-                  small
-                  background
-                />
-              </div>
               <el-button type="primary" class="create-btn" @click="startCreate">
                 <el-icon><Plus /></el-icon>
                 新增片段
@@ -95,62 +86,68 @@
           </div>
 
           <div class="body">
-            <div class="list">
-              <el-card
-                v-for="row in pagedItems"
-                :key="row.id"
-                shadow="hover"
-                class="snippet-card"
-                :class="{ 'is-deleted': row.deleted, active: pane.id === row.id }"
-                @click="selectRow(row)"
-              >
-                <div class="snippet-head">
-                  <div class="snippet-title">{{ row.title }}</div>
-                  <div class="snippet-actions" @click.stop>
-                    <el-button class="copy-btn" round @click="copyToClipboard(row.content)">复制</el-button>
-                  </div>
-                </div>
+            <div ref="listRef" class="list">
+              <VirtualList v-if="filteredItems.length" :items="filteredItems" :height="listHeight" :item-size="cardItemSize">
+                <template #default="{ item: row }">
+                  <el-card
+                    :key="row.id"
+                    shadow="hover"
+                    class="snippet-card"
+                    :class="{ 'is-deleted': row.deleted, active: pane.id === row.id }"
+                    @click="selectRow(row)"
+                  >
+                    <div class="snippet-head">
+                      <div class="snippet-title">{{ row.title }}</div>
+                      <div class="snippet-actions" @click.stop>
+                        <el-button class="copy-btn" round @click="copyAsCreate(row)">复制</el-button>
+                      </div>
+                    </div>
 
-                <div class="snippet-meta">
-                  <el-tag size="small" effect="light" type="primary">{{ row.language }}</el-tag>
-                  <div class="tags-cell">
-                    <el-tag
-                      v-for="tag in row.tags"
-                      :key="tag"
-                      size="small"
-                      effect="plain"
-                      class="row-tag"
-                      @click.stop="toggleTag(tag)"
-                    >
-                      {{ tag }}
-                    </el-tag>
-                    <span v-if="!row.tags.length" class="muted">-</span>
-                  </div>
-                  <span class="meta-time muted">更新 {{ formatDate(row.updatedAt) }}</span>
-                </div>
+                    <div class="snippet-meta">
+                      <el-tag size="small" effect="light" type="primary">{{ row.language }}</el-tag>
+                      <div class="tags-cell">
+                        <el-tag
+                          v-for="tag in row.tags"
+                          :key="tag"
+                          size="small"
+                          effect="plain"
+                          class="row-tag"
+                          @click.stop="toggleTag(tag)"
+                        >
+                          {{ tag }}
+                        </el-tag>
+                        <span v-if="!row.tags.length" class="muted">-</span>
+                      </div>
+                      <span class="meta-time muted">更新 {{ formatDate(row.updatedAt) }}</span>
+                    </div>
 
-                <div class="snippet-code">
-                  <MonacoEditor
-                    :key="`${row.id}-${row.updatedAt}`"
-                    :model-value="row.content"
-                    :language="toMonacoLang(row.language)"
-                    :read-only="true"
-                    height="128px"
-                    :options="monacoPreviewOptions"
-                  />
-                </div>
+                    <div class="snippet-code">
+                      <MonacoEditor
+                        :key="`${row.id}-${row.updatedAt}`"
+                        :model-value="row.content"
+                        :language="toMonacoLang(row.language)"
+                        :read-only="true"
+                        height="128px"
+                        :options="monacoPreviewOptions"
+                      />
+                    </div>
 
-                <div class="snippet-foot" @click.stop>
-                  <el-button size="small" round plain @click="selectRow(row)">详情</el-button>
-                  <el-button size="small" round plain :disabled="row.deleted" @click="startEdit(row)">编辑</el-button>
-                  <el-button v-if="!row.deleted" size="small" round plain type="danger" @click="softDelete(row)">
-                    删除
-                  </el-button>
-                  <el-button v-else size="small" round plain type="success" @click="restore(row)">恢复</el-button>
-                </div>
-              </el-card>
+                    <div class="snippet-foot" @click.stop>
+                      <el-button size="small" round plain @click="selectRow(row)">详情</el-button>
+                      <el-button size="small" round plain :disabled="row.deleted" @click="startEdit(row)">编辑</el-button>
+                      <el-button v-if="!row.deleted" size="small" round plain type="danger" @click="softDelete(row)">
+                        删除
+                      </el-button>
+                      <template v-else>
+                        <el-button size="small" round plain type="success" @click="restore(row)">恢复</el-button>
+                        <el-button size="small" round plain type="danger" @click="hardDelete(row)">彻底删除</el-button>
+                      </template>
+                    </div>
+                  </el-card>
+                </template>
+              </VirtualList>
 
-              <div v-if="!filteredItems.length" class="empty">
+              <div v-else class="empty">
                 <div class="empty-title">暂无片段</div>
                 <div class="muted">试试调整筛选条件，或点击右上角新增片段</div>
               </div>
@@ -164,7 +161,7 @@
                     <el-button v-if="pane.mode === 'view'" link type="primary" @click="startEdit()">
                       编辑
                     </el-button>
-                    <el-button v-if="pane.mode === 'view'" link type="info" @click="copyActive">
+                    <el-button v-if="pane.mode === 'view'" link type="info" @click="activeItem && copyAsCreate(activeItem)">
                       复制
                     </el-button>
                     <el-button v-if="pane.mode === 'view' && activeItem && !activeItem.deleted" link type="danger" @click="softDelete(activeItem)">
@@ -219,7 +216,7 @@
                       placeholder="输入并回车创建标签"
                       style="width: 100%"
                     >
-                      <el-option v-for="tag in allTags" :key="tag" :label="tag" :value="tag" />
+                      <el-option v-for="tag in allTags" :key="tag.id || tag.name" :label="tag.name" :value="tag.name" />
                     </el-select>
                   </el-form-item>
 
@@ -237,10 +234,6 @@
                   <div class="pane-footer">
                     <template v-if="pane.mode === 'view'">
                       <div class="muted" v-if="activeItem">更新 {{ formatDate(activeItem.updatedAt) }}</div>
-                      <div class="pane-footer-actions">
-                        <el-button :disabled="activeItem?.deleted" @click="startEdit()">编辑</el-button>
-                        <el-button type="primary" @click="copyActive">复制</el-button>
-                      </div>
                     </template>
                     <template v-else>
                       <div class="pane-footer-actions">
@@ -260,13 +253,26 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
+import { useRoute } from 'vue-router'
 import MonacoEditor from './MonacoEditor.vue'
+import VirtualList from '@/components/VirtualList.vue'
+import {
+  addSnippetApi,
+  deleteTagApi,
+  deleteSnippetApi,
+  getLanguagesApi,
+  getSnippetApi,
+  getTagsApi,
+  hardDeleteSnippetApi,
+  updateSnippetApi,
+  type SnippetRes
+} from '@/api/snippets'
 
-type Language = 'Java' | 'JavaScript' | 'Python' | 'SQL'
+type Language = string
 type MonacoLanguage = 'plaintext' | 'java' | 'javascript' | 'sql'
 
 type MonacoEditorExpose = {
@@ -291,167 +297,161 @@ interface SnippetItem {
   deleted: boolean
 }
 
-const languages: Language[] = ['Java', 'JavaScript', 'Python', 'SQL']
+type TagOption = {
+  id?: string
+  name: string
+}
 
-const seedNow = Date.now()
-const items = ref<SnippetItem[]>([
-  {
-    id: 's1',
-    title: '二分查找算法',
-    language: 'Java',
-    tags: ['算法', '数组'],
-    content:
-      'public int binarySearch(int[] nums, int target) {\n' +
-      '  int l = 0, r = nums.length - 1;\n' +
-      '  while (l <= r) {\n' +
-      '    int mid = l + (r - l) / 2;\n' +
-      '    if (nums[mid] == target) return mid;\n' +
-      '    if (nums[mid] < target) l = mid + 1;\n' +
-      '    else r = mid - 1;\n' +
-      '  }\n' +
-      '  return -1;\n' +
-      '}',
-    createdAt: seedNow - 1000 * 60 * 60 * 24 * 4,
-    updatedAt: seedNow - 1000 * 60 * 60 * 7,
-    deleted: false
-  },
-  {
-    id: 's2',
-    title: '深拷贝函数',
-    language: 'JavaScript',
-    tags: ['工具', '对象'],
-    content:
-      'export function deepClone(obj) {\n' +
-      '  if (obj === null || typeof obj !== \"object\") return obj;\n' +
-      '  if (Array.isArray(obj)) return obj.map(deepClone);\n' +
-      '  const res = {};\n' +
-      '  for (const k in obj) res[k] = deepClone(obj[k]);\n' +
-      '  return res;\n' +
-      '}',
-    createdAt: seedNow - 1000 * 60 * 60 * 24 * 3,
-    updatedAt: seedNow - 1000 * 60 * 60 * 18,
-    deleted: false
-  },
-  {
-    id: 's3',
-    title: 'JWT Token验证',
-    language: 'Java',
-    tags: ['安全', '认证'],
-    content:
-      'public boolean verify(String token) {\n' +
-      '  try {\n' +
-      '    Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);\n' +
-      '    return true;\n' +
-      '  } catch (Exception e) {\n' +
-      '    return false;\n' +
-      '  }\n' +
-      '}',
-    createdAt: seedNow - 1000 * 60 * 60 * 24 * 2,
-    updatedAt: seedNow - 1000 * 60 * 60 * 4,
-    deleted: false
-  },
-  {
-    id: 's4',
-    title: '防抖函数',
-    language: 'JavaScript',
-    tags: ['工具', '性能'],
-    content:
-      'export function debounce(fn, delay = 300) {\n' +
-      '  let timer;\n' +
-      '  return (...args) => {\n' +
-      '    clearTimeout(timer);\n' +
-      '    timer = setTimeout(() => fn(...args), delay);\n' +
-      '  };\n' +
-      '}',
-    createdAt: seedNow - 1000 * 60 * 60 * 24,
-    updatedAt: seedNow - 1000 * 60 * 60 * 3,
-    deleted: false
-  },
-  {
-    id: 's5',
-    title: 'MySQL分页查询',
-    language: 'SQL',
-    tags: ['数据库', '分页'],
-    content:
-      'SELECT *\n' +
-      'FROM sys_user\n' +
-      'ORDER BY create_time DESC\n' +
-      'LIMIT 10 OFFSET 0;',
-    createdAt: seedNow - 1000 * 60 * 60 * 12,
-    updatedAt: seedNow - 1000 * 60 * 60 * 2,
-    deleted: false
-  }
-])
+const languages = ref<Language[]>([])
+
+const items = ref<SnippetItem[]>([])
+const countItems = ref<SnippetItem[]>([])
+const route = useRoute()
 
 const query = reactive({
   keyword: '',
-  language: '' as '' | Language,
+  language: '',
   tag: '',
   showDeleted: false
 })
 
-const pagination = reactive({
-  page: 1,
-  pageSize: 10
-})
+const allTags = ref<TagOption[]>([])
 
-const allTags = computed(() => {
-  const set = new Set<string>()
-  for (const item of items.value) {
-    for (const t of item.tags) set.add(t)
+const listRef = ref<HTMLElement | null>(null)
+const listHeight = ref(600)
+const cardItemSize = 274
+
+const tagIdByName = computed(() => {
+  const map: Record<string, string> = {}
+  for (const t of allTags.value) {
+    if (!t?.name) continue
+    if (t.id) map[t.name] = t.id
   }
-  return Array.from(set).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+  return map
 })
 
-const filteredItems = computed(() => {
-  const kw = query.keyword.trim().toLowerCase()
-  return items.value
-    .filter((i) => (query.showDeleted ? true : !i.deleted))
-    .filter((i) => (query.language ? i.language === query.language : true))
-    .filter((i) => (query.tag ? i.tags.includes(query.tag) : true))
-    .filter((i) => {
-      if (!kw) return true
-      return i.title.toLowerCase().includes(kw) || i.content.toLowerCase().includes(kw)
-    })
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-})
+const normalizeLanguage = (lang?: string): Language => {
+  const v = (lang ?? '').trim()
+  return v || 'Java'
+}
 
-const filteredNoLang = computed(() => {
-  const kw = query.keyword.trim().toLowerCase()
-  return items.value
-    .filter((i) => (query.showDeleted ? true : !i.deleted))
-    .filter((i) => (query.tag ? i.tags.includes(query.tag) : true))
-    .filter((i) => {
-      if (!kw) return true
-      return i.title.toLowerCase().includes(kw) || i.content.toLowerCase().includes(kw)
-    })
-    .sort((a, b) => b.updatedAt - a.updatedAt)
-})
+const toMs = (v: any) => {
+  const t = new Date(v).getTime()
+  return Number.isNaN(t) ? 0 : t
+}
+
+const mapSnippetRes = (s: SnippetRes): SnippetItem => {
+  return {
+    id: s.id,
+    title: s.title ?? '',
+    content: s.content ?? '',
+    language: normalizeLanguage(s.language),
+    tags: Array.isArray(s.tags) ? s.tags.map((t: any) => String(t?.name ?? '').trim()).filter(Boolean) : [],
+    createdAt: toMs(s.createdAt),
+    updatedAt: toMs(s.updatedAt),
+    deleted: s.deleted === 1
+  }
+}
+
+const loadTags = async () => {
+  try {
+    const res = await getTagsApi()
+    if (res.code !== 200) return
+    const list = Array.isArray(res.data) ? res.data : []
+    allTags.value = list
+      .map((t: any) => ({ id: t?.id ? String(t.id) : undefined, name: String(t?.name ?? '').trim() }))
+      .filter((t: TagOption) => Boolean(t.name))
+      .sort((a: TagOption, b: TagOption) => a.name.localeCompare(b.name, 'zh-CN'))
+  } catch {}
+}
+
+const loadLanguages = async () => {
+  try {
+    const res = await getLanguagesApi()
+    if (res.code !== 200) return
+    const list = Array.isArray(res.data) ? res.data : []
+    languages.value = list.map((v: any) => String(v ?? '').trim()).filter(Boolean)
+  } catch {}
+}
+
+const loadSnippets = async () => {
+  try {
+    const req: any = {
+      showDeleted: query.showDeleted
+    }
+    if (query.language) req.language = query.language
+    if (query.tag) req.tagNames = [query.tag]
+    if (query.keyword.trim()) req.keyword = query.keyword.trim()
+    const res = await getSnippetApi(req)
+    if (res.code !== 200) return
+    const list = Array.isArray(res.data) ? (res.data as SnippetRes[]) : []
+    items.value = list.map(mapSnippetRes)
+  } catch {}
+}
+
+const loadSnippetCounts = async () => {
+  try {
+    const req: any = {
+      showDeleted: query.showDeleted
+    }
+    if (query.tag) req.tagNames = [query.tag]
+    if (query.keyword.trim()) req.keyword = query.keyword.trim()
+    const res = await getSnippetApi(req)
+    if (res.code !== 200) return
+    const list = Array.isArray(res.data) ? (res.data as SnippetRes[]) : []
+    countItems.value = list.map(mapSnippetRes)
+  } catch {}
+}
+
+const filteredItems = computed(() => items.value)
+const filteredNoLang = computed(() => countItems.value)
 
 const languageCountMap = computed(() => {
-  const res: Record<Language, number> = {
-    Java: 0,
-    JavaScript: 0,
-    Python: 0,
-    SQL: 0
+  const res: Record<string, number> = {}
+  for (const lang of languages.value) {
+    res[lang] = 0
   }
   for (const i of filteredNoLang.value) res[i.language]++
   return res
 })
 
-const pagedItems = computed(() => {
-  const start = (pagination.page - 1) * pagination.pageSize
-  return filteredItems.value.slice(start, start + pagination.pageSize)
-})
-
 watch(
-  () => [query.keyword, query.language, query.tag, query.showDeleted],
+  () => [query.language, query.tag, query.showDeleted],
   () => {
-    pagination.page = 1
+    void loadSnippets()
+    void loadSnippetCounts()
   }
 )
 
-const setLanguage = (lang: '' | Language) => {
+const syncListHeight = () => {
+  const el = listRef.value
+  if (!el) return
+  const h = el.clientHeight
+  if (h > 0) listHeight.value = h
+}
+
+onMounted(() => {
+  syncListHeight()
+  window.addEventListener('resize', syncListHeight)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncListHeight)
+})
+
+let keywordTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => query.keyword,
+  () => {
+    if (keywordTimer) clearTimeout(keywordTimer)
+    keywordTimer = setTimeout(() => {
+      void loadSnippets()
+      void loadSnippetCounts()
+    }, 300)
+  }
+)
+
+const setLanguage = (lang: string) => {
   query.language = lang
 }
 
@@ -609,59 +609,117 @@ const savePane = async () => {
   const content = pane.form.content
   const language = pane.form.language
   const tags = pane.form.tags.map((t) => t.trim()).filter(Boolean)
-  console.log('content====',content);
 
   if (pane.mode === 'create') {
-    const id = `s_${Math.random().toString(16).slice(2)}`
-    const newItem: SnippetItem = {
-      id,
-      title,
-      content,
-      language,
-      tags,
-      createdAt: now,
-      updatedAt: now,
-      deleted: false
-    }
-    items.value.unshift(newItem)
-    ElMessage.success('新增成功')
-    selectRow(newItem)
+    try {
+      const res = await addSnippetApi({
+        title,
+        content,
+        language,
+        tags: tags.map((name) => ({ id: tagIdByName.value[name] ?? null, name }))
+      })
+      if (res.code === 200) {
+        ElMessage.success('新增成功')
+        await loadTags()
+        await loadSnippets()
+        if (items.value[0]) selectRow(items.value[0])
+      }
+    } catch {}
     return
   }
 
   if (pane.mode === 'edit' && pane.id) {
-    const idx = items.value.findIndex((i) => i.id === pane.id)
-    if (idx >= 0) {
-      const old = items.value[idx]
-      items.value[idx] = {
-        ...old,
+    try {
+      const res = await updateSnippetApi({
+        id: pane.id,
         title,
         content,
         language,
-        tags,
-        updatedAt: now
+        tags: tags.map((name) => ({ id: tagIdByName.value[name] ?? null, name }))
+      })
+      if (res.code === 200) {
+        ElMessage.success('保存成功')
+        await loadTags()
+        await loadSnippets()
+        const latest = items.value.find((i) => i.id === pane.id)
+        if (latest) selectRow(latest)
       }
-      ElMessage.success('保存成功')
-      pane.mode = 'view'
-      fillPane(items.value[idx])
-    }
+    } catch {}
   }
 }
 
-const copyActive = async () => {
-  if (pane.mode === 'empty') return
-  await copyToClipboard(pane.form.content)
+const copyAsCreate = (row: SnippetItem) => {
+  pane.id = ''
+  pane.mode = 'create'
+  pane.form.title = row.title
+  pane.form.content = row.content
+  pane.form.language = row.language
+  pane.form.tags = [...row.tags]
+  formRef.value?.clearValidate()
+  void syncPaneEditor()
 }
 
 const softDelete = async (row: SnippetItem) => {
-  await ElMessageBox.confirm(`确认删除「${row.title}」？（可在“显示已删除”中恢复）`, '提示', {
+  await ElMessageBox.confirm(`确认删除「${row.title}」？`, '提示', {
     type: 'warning',
     confirmButtonText: '删除',
     cancelButtonText: '取消'
   })
-  row.deleted = true
-  row.updatedAt = Date.now()
-  ElMessage.success('已删除')
+  try {
+    const res = await deleteSnippetApi(row.id)
+    if (res.code === 200) {
+      ElMessage.success('已删除')
+      await loadSnippets()
+      await loadTags()
+      if (pane.id === row.id) {
+        pane.mode = 'empty'
+        pane.id = ''
+        resetPaneForm()
+      }
+    }
+  } catch {}
+}
+
+const hardDelete = async (row: SnippetItem) => {
+  await ElMessageBox.confirm(`确认彻底删除「${row.title}」？（不可恢复）`, '提示', {
+    type: 'warning',
+    confirmButtonText: '彻底删除',
+    cancelButtonText: '取消'
+  })
+  try {
+    const res = await hardDeleteSnippetApi(row.id)
+    if (res.code === 200) {
+      ElMessage.success('已彻底删除')
+      await loadSnippets()
+      await loadTags()
+      if (pane.id === row.id) {
+        pane.mode = 'empty'
+        pane.id = ''
+        resetPaneForm()
+      }
+    }
+  } catch {}
+}
+
+const deleteTag = async (tag: TagOption) => {
+  if (!tag?.id) {
+    ElMessage.error('标签ID不能为空')
+    return
+  }
+  await ElMessageBox.confirm(`确认删除标签「${tag.name}」？（关联的片段标签也会被移除）`, '提示', {
+    type: 'warning',
+    confirmButtonText: '删除',
+    cancelButtonText: '取消'
+  })
+  try {
+    const res = await deleteTagApi(tag.id)
+    if (res.code === 200) {
+      ElMessage.success('标签已删除')
+      if (query.tag === tag.name) query.tag = ''
+      await loadTags()
+      await loadSnippets()
+    }
+  } catch {}
 }
 
 const restore = (row: SnippetItem) => {
@@ -681,11 +739,20 @@ const copyToClipboard = async (text: string) => {
 
 const formatDate = (ts: number) => {
   const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return '-'
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(
     d.getMinutes()
   )}`
 }
+
+onMounted(() => {
+  query.keyword = typeof route.query.keyword === 'string' ? route.query.keyword : ''
+  void loadLanguages()
+  void loadTags()
+  void loadSnippets()
+  void loadSnippetCounts()
+})
 </script>
 
 <style scoped>
@@ -798,6 +865,11 @@ const formatDate = (ts: number) => {
   backdrop-filter: blur(10px);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06);
   height: 100%;
+  min-height: 0;
+}
+
+.panel :deep(.el-card__body) {
+  height: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -813,7 +885,7 @@ const formatDate = (ts: number) => {
 
 .toolbar-fixed {
   position: sticky;
-  top: 0;
+  top: calc(-1 * var(--el-card-padding));
   z-index: 10;
   padding: 12px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
@@ -864,19 +936,19 @@ const formatDate = (ts: number) => {
 }
 
 .list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   flex: 1;
   min-height: 0;
-  overflow: auto;
-  padding-right: 2px;
+  overflow: hidden;
+  padding: 2px;
 }
 
 .pane {
   width: 420px;
   flex: 0 0 420px;
   min-height: 0;
+  position: sticky;
+  top: var(--el-card-padding);
+  align-self: flex-start;
 }
 
 .pane-card {
@@ -964,6 +1036,8 @@ const formatDate = (ts: number) => {
   background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 10px 30px rgba(31, 38, 135, 0.06);
   cursor: pointer;
+  height: 260px;
+  overflow: hidden;
 }
 
 .snippet-card.active {

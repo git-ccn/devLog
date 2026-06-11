@@ -6,13 +6,13 @@
           <el-icon class="title-icon"><Notebook /></el-icon>
           技术笔记
         </span>
-        <div class="view-more">
+        <div class="view-more" @click="goNotes()">
           查看更多<el-icon><ArrowRight /></el-icon>
         </div>
       </div>
     </template>
     <div class="note-list">
-      <div v-for="(note, index) in notes" :key="index" class="note-item">
+      <div v-for="note in notes" :key="note.id" class="note-item" @click="goNotes(note.title)">
         <div class="note-icon" :style="{ background: note.color }">
           <el-icon><component :is="note.icon" /></el-icon>
         </div>
@@ -29,38 +29,76 @@
 </template>
 
 <script lang="ts" setup>
-import { markRaw, ref } from 'vue'
+import { markRaw, onMounted, ref } from 'vue'
 import { Notebook, ArrowRight, Pointer, Share, Collection } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { getNotesApi, type NoteRes } from '@/api/notes'
 
-const notes = ref([
-  {
-    title: 'Spring Cloud 微服务组件详解',
-    date: '2024-03-05',
-    category: '后端',
-    icon: markRaw(Pointer),
-    color: '#ff9c6e',
-    tag: '已完结',
-    tagType: 'success'
-  },
-  {
-    title: 'Vue3 + TypeScript 最佳实践总结',
-    date: '2024-03-02',
-    category: '前端',
-    icon: markRaw(Share),
-    color: '#69c0ff',
-    tag: '更新中',
-    tagType: 'warning'
-  },
-  {
-    title: 'MySQL 深度优化指南',
-    date: '2024-02-28',
-    category: '数据库',
-    icon: markRaw(Collection),
-    color: '#b37feb',
-    tag: '草稿箱',
-    tagType: 'info'
+const router = useRouter()
+
+type NoteStatus = 'draft' | 'updating' | 'done'
+type TagType = 'info' | 'warning' | 'success' | 'primary' | 'danger'
+
+type NoteCardItem = {
+  id: string
+  title: string
+  date: string
+  category: string
+  icon: any
+  color: string
+  tag: string
+  tagType: TagType
+}
+
+const goNotes = (keyword?: string) => {
+  const value = String(keyword ?? '').trim()
+  void router.push(value ? { path: '/home/notes', query: { keyword: value } } : '/home/notes')
+}
+
+const statusLabelMap: Record<NoteStatus, { label: string; tagType: TagType }> = {
+  draft: { label: '草稿', tagType: 'info' },
+  updating: { label: '更新中', tagType: 'warning' },
+  done: { label: '已完结', tagType: 'success' }
+}
+
+const iconList = [markRaw(Pointer), markRaw(Share), markRaw(Collection)]
+const colorList = ['#ff9c6e', '#69c0ff', '#b37feb']
+
+const normalizeDate = (v: any) => {
+  const s = String(v ?? '').trim()
+  if (!s) return '-'
+  return s.length >= 10 ? s.slice(0, 10) : s
+}
+
+const mapNote = (note: NoteRes, index: number): NoteCardItem => {
+  const status = (String(note?.status ?? 'draft') as NoteStatus) || 'draft'
+  const meta = statusLabelMap[status] || statusLabelMap.draft
+  return {
+    id: String(note?.id ?? ''),
+    title: String(note?.title ?? ''),
+    date: normalizeDate(note?.updatedAt),
+    category: String(note?.category ?? ''),
+    icon: iconList[index % iconList.length],
+    color: colorList[index % colorList.length],
+    tag: meta.label,
+    tagType: meta.tagType
   }
-])
+}
+
+const notes = ref<NoteCardItem[]>([])
+
+const loadNotes = async () => {
+  try {
+    const res = await getNotesApi({ pageNum: 1, pageSize: 3 })
+    if (res.code !== 200) return
+    const list = Array.isArray(res.data) ? (res.data as NoteRes[]) : []
+    notes.value = list.map(mapNote)
+  } catch {}
+}
+
+onMounted(() => {
+  void loadNotes()
+})
 </script>
 
 <style scoped>

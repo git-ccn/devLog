@@ -1,9 +1,8 @@
 package com.example.devlogjava.controller;
 
-import com.example.devlogjava.dto.UserDTO;
 import com.example.devlogjava.service.UserService;
 import com.example.devlogjava.common.Result;
-import jakarta.servlet.http.HttpServletRequest;
+import com.example.devlogjava.dto.UserReq;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -16,18 +15,18 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/login")
-    public Result<?> login(@RequestBody UserDTO userDTO) {
-        return userService.login(userDTO);
+    public Result<?> login(@RequestBody UserReq userReq) {
+        return userService.login(userReq);
     }
 
     @PostMapping("/register")
-    public Result<?> register(@RequestBody UserDTO userDTO) {
-        return userService.register(userDTO);
+    public Result<?> register(@RequestBody UserReq userReq) {
+        return userService.register(userReq);
     }
 
     @PostMapping("/forgot-password")
-    public Result<?> forgotPassword(@RequestBody UserDTO userDTO) {
-        return userService.forgotPassword(userDTO);
+    public Result<?> forgotPassword(@RequestBody UserReq userReq) {
+        return userService.forgotPassword(userReq);
     }
 
     @PostMapping("/logout")

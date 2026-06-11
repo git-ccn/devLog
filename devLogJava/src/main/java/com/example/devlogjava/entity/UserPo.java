@@ -1,15 +1,11 @@
 package com.example.devlogjava.entity;
 
-import jakarta.persistence.*;
 import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Data
-@Entity
-@Table(name = "sys_user")
-public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+public class UserPo {
     private String id;
 
     private String phone;
@@ -18,9 +14,7 @@ public class User {
     
     private String nickname;
 
-    @Column(updatable = false, insertable = false)
     private LocalDateTime createTime;
 
-    @Column(updatable = false, insertable = false)
     private LocalDateTime updateTime;
 }
