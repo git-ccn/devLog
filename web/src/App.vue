@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 </script>
 
 <template>
-  <!-- 使用 v-slot 配合 keep-alive 缓存路由组件状态 -->
-  <router-view v-slot="{ Component }">
-    <keep-alive>
-      <component :is="Component" />
-    </keep-alive>
-  </router-view>
+  <el-config-provider :locale="zhCn">
+    <router-view v-slot="{ Component }">
+      <keep-alive>
+        <component :is="Component" />
+      </keep-alive>
+    </router-view>
+  </el-config-provider>
 </template>
 
 <style scoped>

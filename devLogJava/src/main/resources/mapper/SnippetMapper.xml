@@ -8,6 +8,9 @@
         <if test="!query.showDeleted">
             AND s.deleted = 0
         </if>
+        <if test="query.userId != null and query.userId != ''">
+            AND s.user_id = #{query.userId}
+        </if>
         <if test="query.language != null and query.language != ''">
             AND s.language = #{query.language}
         </if>
@@ -68,8 +71,8 @@
     </select>
 
     <insert id="insert" parameterType="SnippetPo">
-        INSERT INTO devlog_snippet (id, title, content, language, deleted)
-        VALUES (#{id}, #{title}, #{content}, #{language}, IFNULL(#{deleted}, 0))
+        INSERT INTO devlog_snippet (id, title, content, language, user_id, deleted)
+        VALUES (#{id}, #{title}, #{content}, #{language}, #{userId}, IFNULL(#{deleted}, 0))
     </insert>
 
     <insert id="insertSnippetTag" parameterType="SnippetTagPo">
@@ -210,6 +213,14 @@
         JOIN devlog_snippet_tag st ON st.tag_id = t.id
         WHERE st.snippet_id = #{snippetId}
         ORDER BY t.id DESC
+    </select>
+
+    <select id="countByDate" resultType="map">
+        SELECT DATE(created_at) AS day, COUNT(*) AS count
+        FROM devlog_snippet
+        WHERE created_at >= #{startDate} AND deleted = 0
+        GROUP BY DATE(created_at)
+        ORDER BY day ASC
     </select>
 
 </mapper>

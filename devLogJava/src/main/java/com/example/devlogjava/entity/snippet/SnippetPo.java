@@ -15,6 +15,8 @@ public class SnippetPo {
 
     private String language;
 
+    private String userId;
+
     private Integer deleted;
 
     private LocalDateTime createdAt;

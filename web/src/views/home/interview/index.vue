@@ -29,9 +29,7 @@
         </div>
       </div>
       <div class="header-right">
-        <el-button @click="pickRandom">随机一题</el-button>
-        <el-button :disabled="!activeItem" @click="prevItem">上一题</el-button>
-        <el-button :disabled="!activeItem" @click="nextItem">下一题</el-button>
+        <el-button type="primary" @click="openExam">考试巩固</el-button>
       </div>
     </header>
 
@@ -61,7 +59,7 @@
                   <div class="problem-title">{{ item.title }}</div>
                   <div class="problem-sub">
                     <span>{{ item.category }}</span>
-                    <span>{{ item.updatedAt }}</span>
+                    <span>{{ formatDate(item.updatedAt) }}</span>
                   </div>
                 </div>
                 <div class="problem-right">
@@ -88,17 +86,16 @@
             </div>
             <div class="work-meta">
               <span>{{ activeItem.category }}</span>
-              <span>{{ activeItem.updatedAt }}</span>
+              <span>{{ formatDate(activeItem.updatedAt) }}</span>
               <span v-if="activeItem.accuracy != null" class="work-accuracy">
                 正确率 {{ activeItem.accuracy }}%
               </span>
               <span class="work-index">第 {{ activeIndex + 1 }} / {{ items.length }} 题</span>
             </div>
             <div class="work-actions">
-              <el-button size="small" type="success" @click="setStatus(activeItem, 'mastered')">已掌握</el-button>
-              <el-button size="small" type="warning" @click="setStatus(activeItem, 'learning')">学习中</el-button>
-              <el-button size="small" @click="setStatus(activeItem, 'todo')">待整理</el-button>
-              <el-button size="small" type="primary" plain @click="showAnswer = !showAnswer">
+              <el-button size="small" :disabled="activeIndex <= 0" @click="prevItem">上一题</el-button>
+              <el-button size="small" :disabled="activeIndex >= items.length - 1" @click="nextItem">下一题</el-button>
+              <el-button v-if="activeItem.status !== 'todo'" size="small" type="primary" plain @click="toggleShowAnswer">
                 {{ showAnswer ? '隐藏解析' : '显示解析' }}
               </el-button>
             </div>
@@ -108,7 +105,7 @@
             <el-tab-pane label="题目" name="question">
               <MarkdownEditor readonly :model-value="activeItem.question" />
               <div class="answer-section">
-                <div class="answer-toolbar">
+                <div v-if="activeItem.status !== 'mastered'" class="answer-toolbar">
                   <el-button size="small" type="primary" :loading="submitting" @click="saveMyAnswer">
                     {{ submitting ? '评分中...' : '提交答案' }}
                   </el-button>
@@ -117,11 +114,8 @@
                 <MarkdownEditor v-model="myAnswerDraft" hide-preview placeholder="在这里写你的思路和答案（支持 Markdown）" />
               </div>
             </el-tab-pane>
-            <el-tab-pane label="解析" name="solution">
-              <div v-if="showAnswer">
-                <MarkdownEditor readonly :model-value="activeItem.solution" />
-              </div>
-              <el-empty v-else description="点击上方“显示解析”查看参考答案" />
+            <el-tab-pane v-if="showAnswer && activeItem.status !== 'todo'" label="解析" name="solution">
+              <MarkdownEditor readonly :model-value="activeItem.solution" />
             </el-tab-pane>
           </el-tabs>
         </el-card>
@@ -133,16 +127,67 @@
         </div>
       </main>
     </section>
+
+    <!-- 考试弹窗 -->
+    <el-dialog v-model="examVisible" title="考试巩固" width="800px" destroy-on-close class="exam-dialog">
+      <div v-if="examLoading" class="exam-loading">正在生成考试题目...</div>
+      <div v-else class="exam-body">
+        <div class="exam-info">
+          共 {{ examItems.length }} 道题目
+          <el-select v-model="examFilter" class="exam-filter" size="small">
+            <el-option label="全部" value="" />
+            <el-option label="未答" value="unanswered" />
+            <el-option label="已答" value="answered" />
+          </el-select>
+        </div>
+        <div class="exam-scroll">
+          <div v-if="filteredExamItems.length === 0" class="exam-empty">暂无题目</div>
+          <div v-for="(q, idx) in filteredExamItems" :key="q.id" class="exam-item">
+            <div class="exam-header">
+              <span class="exam-num">{{ idx + 1 }}. {{ q.title }}</span>
+              <el-tag size="small" :type="q.difficulty === 'easy' ? 'info' : q.difficulty === 'medium' ? 'warning' : 'danger'">
+                {{ q.difficulty === 'easy' ? '简单' : q.difficulty === 'medium' ? '中等' : '困难' }}
+              </el-tag>
+            </div>
+            <MarkdownEditor readonly :model-value="q.question" />
+            <el-input
+              v-if="!graded"
+              v-model="examAnswers[q.id]"
+              type="textarea"
+              :rows="3"
+              placeholder="输入你的答案..."
+            />
+            <div v-if="graded && examResults[q.id]" class="exam-grade">
+              <div class="exam-score" :class="scoreClass(examResults[q.id]?.accuracy)">
+                得分：{{ examResults[q.id]?.accuracy ?? '-' }} 分
+              </div>
+              <div v-if="examResults[q.id]?.solution" class="exam-solution">
+                {{ examResults[q.id].solution }}
+              </div>
+            </div>
+            <div v-if="graded && !examResults[q.id] && examAnswers[q.id]" class="exam-grade">
+              <span class="exam-score" style="color:#909399">未作答</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button v-if="!graded" type="primary" :loading="grading" :disabled="examItems.length === 0" @click="submitExam">
+          {{ grading ? 'AI 批卷中...' : '交卷' }}
+        </el-button>
+        <el-button @click="examVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import VirtualList from '@/components/VirtualList.vue'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { Notebook, Search } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { getInterviewApi, addAnsApi, updateAnsApi, getCategoryApi, type InterviewCategoryRes, type InterviewQueryReq } from '@/api/interview'
+import { getInterviewApi, addAnsApi, updateAnsApi, getCategoryApi, examApi, gradeApi, type InterviewCategoryRes, type InterviewQueryReq, type ExamGradeReq } from '@/api/interview'
 
 type InterviewStatus = 'todo' | 'learning' | 'mastered'
 type InterviewDifficulty = 'easy' | 'medium' | 'hard'
@@ -304,47 +349,119 @@ const nextItem = () => {
   moveToIndex(Math.min(items.value.length - 1, activeIndex.value + 1))
 }
 
-const pickRandom = () => {
-  const n = items.value.length
-  if (!n) return
-  const idx = Math.floor(Math.random() * n)
-  moveToIndex(idx)
+const formatDate = (raw: string) => {
+  if (!raw) return ''
+  const d = new Date(raw.replace(' ', 'T'))
+  if (isNaN(d.getTime())) return raw
+  const now = new Date()
+  const diff = now.getTime() - d.getTime()
+  const minutes = Math.floor(diff / 60000)
+  if (minutes < 1) return '刚刚'
+  if (minutes < 60) return `${minutes}分钟前`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}小时前`
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${m}-${day}`
 }
 
-const setStatus = (item: InterviewItem, status: InterviewStatus) => {
-  const idx = items.value.findIndex((i) => i.id === item.id)
-  if (idx < 0) return
-  items.value[idx] = { ...items.value[idx], status, updatedAt: normalizeDate(new Date()) }
+const toggleShowAnswer = () => {
+  showAnswer.value = !showAnswer.value
+  if (showAnswer.value) {
+    activeTab.value = 'solution'
+  } else {
+    activeTab.value = 'question'
+  }
 }
 
 const saveMyAnswer = async () => {
   if (!activeItem.value || submitting.value) return
   const item = activeItem.value
-  const idx = items.value.findIndex((i) => i.id === item.id)
   submitting.value = true
   try {
-    let res: any
     if (item.hasAns) {
-      res = await updateAnsApi({ interviewId: item.id, answer: myAnswerDraft.value })
+      await updateAnsApi({ interviewId: item.id, answer: myAnswerDraft.value })
     } else {
-      res = await addAnsApi({ interviewId: item.id, answer: myAnswerDraft.value })
+      await addAnsApi({ interviewId: item.id, answer: myAnswerDraft.value })
     }
-    const evalData = (res as any)?.data
-    if (idx >= 0) {
-      items.value[idx] = {
-        ...items.value[idx],
-        myAnswer: myAnswerDraft.value,
-        hasAns: true,
-        accuracy: evalData?.accuracy ?? items.value[idx].accuracy,
-        solution: evalData?.solution ?? items.value[idx].solution,
-        updatedAt: normalizeDate(new Date())
-      }
-    }
-    ElMessage.success('已保存作答')
+    await loadFromServer()
+    activeId.value = item.id
+    ElMessage.success('已提交答案')
   } catch {
-    ElMessage.error('保存失败，请重试')
+    ElMessage.error('提交失败，请重试')
   } finally {
     submitting.value = false
+  }
+}
+
+// 考试相关
+const examVisible = ref(false)
+const examLoading = ref(false)
+const examFilter = ref('')
+const grading = ref(false)
+const graded = ref(false)
+const examResults = ref<Record<string, { accuracy: number | null; solution: string | null }>>({})
+type ExamItem = { id: string; title: string; difficulty: string; question: string; solution: string | null }
+const examItems = ref<ExamItem[]>([])
+const examAnswers = ref<Record<string, string>>({})
+
+const filteredExamItems = computed(() => {
+  if (!examFilter.value) return examItems.value
+  if (examFilter.value === 'unanswered') return examItems.value.filter((q) => !examAnswers.value[q.id])
+  return examItems.value.filter((q) => examAnswers.value[q.id])
+})
+
+const scoreClass = (score: number | null | undefined) => {
+  if (score == null) return ''
+  return score >= 80 ? 'score-high' : score >= 60 ? 'score-mid' : 'score-low'
+}
+
+const openExam = async () => {
+  examVisible.value = true
+  examLoading.value = true
+  examAnswers.value = {}
+  examResults.value = {}
+  examFilter.value = ''
+  graded.value = false
+  try {
+    const res = await examApi()
+    const list = (res as any)?.data
+    if (Array.isArray(list)) {
+      examItems.value = list
+    }
+  } catch {
+  } finally {
+    examLoading.value = false
+  }
+}
+
+const submitExam = async () => {
+  if (grading.value) return
+  grading.value = true
+  try {
+    const items: ExamGradeReq['items'] = examItems.value.map((q) => ({
+      id: q.id,
+      title: q.title,
+      question: q.question,
+      answer: examAnswers.value[q.id] || ''
+    }))
+    const res = await gradeApi({ items })
+    const list = (res as any)?.data
+    if (Array.isArray(list)) {
+      const results: Record<string, { accuracy: number | null; solution: string | null }> = {}
+      list.forEach((r: any) => {
+        if (r?.id) {
+          results[r.id] = { accuracy: r.accuracy, solution: r.solution }
+        }
+      })
+      examResults.value = results
+    }
+    graded.value = true
+    ElMessage.success('批卷完成')
+  } catch {
+    ElMessage.error('批卷失败，请重试')
+  } finally {
+    grading.value = false
   }
 }
 
@@ -355,6 +472,15 @@ const itemSize = 72
 const updateListHeight = () => {
   listHeight.value = Math.max(0, listRef.value?.clientHeight || 0)
 }
+
+const applyTitleFromState = () => {
+  const state = history.state as any
+  const title = state?.title
+  if (title) query.keyword = String(title)
+}
+
+// setup 阶段设置 keyword，onMounted 中 loadFromServer 会用到
+applyTitleFromState()
 
 onMounted(async () => {
   await loadFromServer()
@@ -367,6 +493,11 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateListHeight)
+})
+
+// keep-alive 重新激活时，重新设置 keyword 并查询
+onActivated(() => {
+  applyTitleFromState()
 })
 
 watch(
@@ -670,5 +801,84 @@ watch(
   .practice-body {
     grid-template-columns: 1fr;
   }
+}
+
+/* 考试弹窗 */
+.exam-dialog :deep(.el-dialog__body) {
+  padding-top: 8px;
+}
+.exam-body {
+  display: flex;
+  flex-direction: column;
+  height: 58vh;
+}
+.exam-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.exam-loading {
+  text-align: center;
+  padding: 48px 0;
+  color: #909399;
+  font-size: 15px;
+}
+.exam-info {
+  margin-bottom: 16px;
+  color: #606266;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.exam-filter {
+  width: 100px;
+}
+.exam-empty {
+  text-align: center;
+  color: #909399;
+  padding: 24px;
+}
+.exam-item {
+  border: 1px solid #ebeef5;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+.exam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.exam-num {
+  font-weight: 600;
+  font-size: 15px;
+}
+.exam-grade {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 6px;
+}
+.exam-score {
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.exam-score.score-high {
+  color: #67c23a;
+}
+.exam-score.score-mid {
+  color: #e6a23c;
+}
+.exam-score.score-low {
+  color: #f56c6c;
+}
+.exam-solution {
+  color: #303133;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

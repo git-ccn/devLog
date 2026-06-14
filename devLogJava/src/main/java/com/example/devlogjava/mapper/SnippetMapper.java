@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface SnippetMapper {
@@ -61,4 +62,6 @@ public interface SnippetMapper {
     List<SnippetTagPo> querySnippetTagsBySnippetIds(@Param("snippetIds") List<String> snippetIds);
 
     List<TagPo> queryTagsBySnippetId(@Param("snippetId") String snippetId);
+
+    List<Map<String, Object>> countByDate(@Param("startDate") String startDate);
 }

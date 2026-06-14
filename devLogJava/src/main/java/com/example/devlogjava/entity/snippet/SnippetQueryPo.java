@@ -10,6 +10,7 @@ public class SnippetQueryPo {
     private String content;
     private String keyword;
     private String language;
+    private String userId;
     private boolean showDeleted = false;
     private List<String> tagNames;
     private Integer pageNum;

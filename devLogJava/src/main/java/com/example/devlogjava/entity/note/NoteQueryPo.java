@@ -10,6 +10,8 @@ public class NoteQueryPo {
 
     private String categoryId;
 
+    private String userId;
+
     private String status;
 
     private List<String> tagIds;

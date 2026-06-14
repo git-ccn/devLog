@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface InterviewMapper {
@@ -22,4 +23,8 @@ public interface InterviewMapper {
                                @Param("solution") String solution);
 
     int updateStatusByInterviewId(@Param("interviewId") String interviewId, @Param("status") String status);
+
+    List<InterviewPo> randomExam(@Param("limit") int limit);
+
+    List<Map<String, Object>> countByStatus();
 }

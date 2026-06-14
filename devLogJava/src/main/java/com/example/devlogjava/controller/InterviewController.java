@@ -1,6 +1,7 @@
 package com.example.devlogjava.controller;
 
 import com.example.devlogjava.common.Result;
+import com.example.devlogjava.entity.interview.ExamGradeReq;
 import com.example.devlogjava.entity.interview.InterviewAnsPo;
 import com.example.devlogjava.entity.interview.InterviewQueryPo;
 import com.example.devlogjava.service.InterviewService;
@@ -61,6 +62,26 @@ public class InterviewController {
             return interviewService.queryCategories();
         } catch (Exception e) {
             log.error("查询面试分类失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/exam")
+    public Result<List<Map<String, Object>>> exam() {
+        try {
+            return interviewService.exam(30);
+        } catch (Exception e) {
+            log.error("生成考试题目失败", e);
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @PostMapping("/grade")
+    public Result<List<Map<String, Object>>> grade(@RequestBody ExamGradeReq req) {
+        try {
+            return interviewService.grade(req);
+        } catch (Exception e) {
+            log.error("批卷失败", e);
             return Result.error(e.getMessage());
         }
     }

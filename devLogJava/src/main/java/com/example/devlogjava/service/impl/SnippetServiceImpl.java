@@ -3,6 +3,7 @@ package com.example.devlogjava.service.impl;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.devlogjava.common.Result;
+import com.example.devlogjava.common.SecurityUtils;
 import com.example.devlogjava.entity.snippet.SnippetQueryPo;
 import com.example.devlogjava.entity.snippet.SnippetPo;
 import com.example.devlogjava.entity.snippet.SnippetTagPo;
@@ -107,6 +108,11 @@ public class SnippetServiceImpl implements SnippetService {
         if (snippet.getId() == null || snippet.getId().isBlank()) {
             snippet.setId(UUID.randomUUID().toString().replace("-", ""));
         }
+        String userId = SecurityUtils.getCurrentUserId();
+        if (userId == null || userId.isBlank()) {
+            throw new RuntimeException("用户未登录");
+        }
+        snippet.setUserId(userId);
         if (snippet.getDeleted() == null) {
             snippet.setDeleted(0);
         }
@@ -132,6 +138,7 @@ public class SnippetServiceImpl implements SnippetService {
         if (snippet.getId() == null || snippet.getId().isBlank()) {
             throw new IllegalArgumentException("更新代码片段时必须提供有效的ID");
         }
+        snippet.setUserId(null); // 更新时不修改 userId
         int updated;
         try {
             updated = snippetMapper.updateSnippet(snippet);

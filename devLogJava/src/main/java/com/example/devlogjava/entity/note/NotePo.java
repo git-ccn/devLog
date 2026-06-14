@@ -19,6 +19,8 @@ public class NotePo {
 
     private String categoryId;
 
+    private String userId;
+
     private String status;
 
     private Integer readTime;

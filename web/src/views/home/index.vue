@@ -59,31 +59,14 @@
             <el-icon><component :is="item.icon" /></el-icon>
           </div>
         </div>
-        <div class="toolbar-bottom">
-          <div
-            v-for="item in toolbarBottomItems"
-            :key="item.path"
-            class="tool-item"
-            :class="{ active: activeNav === item.path }"
-            @click="go(item.path)"
-          >
-            <el-icon><component :is="item.icon" /></el-icon>
-          </div>
-        </div>
       </aside>
 
       <!-- 主内容区域 - 仪表盘网格 -->
       <main class="main-content">
-        <router-view v-slot="{ Component }">
-          <Suspense>
-            <component :is="Component" />
-            <template #fallback>
-              <div class="route-loading">
-                <el-icon class="route-loading-icon"><Loading /></el-icon>
-                <div class="route-loading-text">页面加载中...</div>
-              </div>
-            </template>
-          </Suspense>
+        <router-view v-slot="{ Component, route: r }">
+          <keep-alive :exclude="noCacheNames">
+            <component :is="Component" :key="r.path" />
+          </keep-alive>
         </router-view>
       </main>
     </div>
@@ -95,7 +78,7 @@ import { markRaw, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
-  Monitor, Search, Notebook, ChatLineSquare, Setting, Loading,
+  Monitor, Search, Notebook, ChatLineSquare,
   HomeFilled, Document
 } from '@element-plus/icons-vue'
 
@@ -120,16 +103,21 @@ const navItems = [
   { name: '代码片段管理器', path: '/home/snippets', icon: markRaw(Document), group: 'top' as const },
   { name: '技术笔记', path: '/home/notes', icon: markRaw(Notebook), group: 'top' as const },
   { name: '面试题库', path: '/home/interview', icon: markRaw(ChatLineSquare), group: 'top' as const },
-  { name: '系统功能', path: '/home/system', icon: markRaw(Setting), group: 'bottom' as const },
 ]
 
 const toolbarTopItems = navItems.filter((i) => i.group === 'top').map(({ path, icon }) => ({ path, icon }))
-const toolbarBottomItems = navItems.filter((i) => i.group === 'bottom').map(({ path, icon }) => ({ path, icon }))
+
+// 根据路由 meta.noCache 决定哪些组件不缓存
+const noCacheNames = router.getRoutes()
+  .filter((r) => r.meta?.noCache && r.name)
+  .map((r) => r.name as string)
 
 watch(
-  () => route.path,
-  (path) => {
-    activeNav.value = path
+  () => route.name,
+  (name) => {
+    if (name) {
+      activeNav.value = router.resolve({ name: String(name) }).path
+    }
   },
   { immediate: true }
 )

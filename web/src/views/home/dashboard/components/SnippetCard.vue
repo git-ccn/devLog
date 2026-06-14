@@ -62,12 +62,7 @@ const goToSnippets = () => {
 }
 
 const goToSnippetByName = (title: string) => {
-  void router.push({
-    path: '/home/snippets',
-    query: {
-      keyword: title
-    }
-  })
+  void router.push({ name: 'Snippets', state: { keyword: title } })
 }
 
 onMounted(() => {

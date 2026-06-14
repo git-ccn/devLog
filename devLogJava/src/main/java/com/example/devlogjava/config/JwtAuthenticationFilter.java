@@ -30,13 +30,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (!token.isEmpty() && !jwtUtils.isTokenExpired(token)) {
                     try {
                         Claims claims = jwtUtils.parseToken(token);
-                        String phone = claims.get("phone", String.class);
-                        if (phone == null || phone.isBlank()) {
-                            phone = claims.getSubject();
+                        String userId = claims.get("userId", String.class);
+                        // fallback: 兼容旧 token（subject 是 phone）
+                        if (userId == null || userId.isBlank()) {
+                            String oldPhone = claims.get("phone", String.class);
+                            if (oldPhone == null || oldPhone.isBlank()) {
+                                oldPhone = claims.getSubject();
+                            }
+                            userId = oldPhone;
                         }
-                        if (phone != null && !phone.isBlank()) {
+                        if (userId != null && !userId.isBlank()) {
                             UsernamePasswordAuthenticationToken authentication =
-                                    new UsernamePasswordAuthenticationToken(phone, null, Collections.emptyList());
+                                    new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
                             SecurityContextHolder.getContext().setAuthentication(authentication);
                         }
                     } catch (Exception ignored) {

@@ -32,19 +32,21 @@ public class JwtUtils {
 
     /**
      * 生成 Token
-     * @param phone 手机号作为 Subject
+     * @param userId 用户ID
+     * @param phone  手机号
      * @return token 字符串
      */
-    public String createToken(String phone) {
+    public String createToken(String userId, String phone) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration * 1000);
 
         Map<String, Object> claims = new HashMap<>();
+        claims.put("userId", userId);
         claims.put("phone", phone);
 
         return Jwts.builder()
                 .setClaims(claims)
-                .setSubject(phone)
+                .setSubject(userId)
                 .setIssuedAt(now)
                 .setExpiration(expiryDate)
                 .signWith(key, SignatureAlgorithm.HS256)

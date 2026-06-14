@@ -52,7 +52,7 @@ type NoteCardItem = {
 
 const goNotes = (keyword?: string) => {
   const value = String(keyword ?? '').trim()
-  void router.push(value ? { path: '/home/notes', query: { keyword: value } } : '/home/notes')
+  void router.push(value ? { name: 'Notes', state: { keyword: value } } : '/home/notes')
 }
 
 const statusLabelMap: Record<NoteStatus, { label: string; tagType: TagType }> = {

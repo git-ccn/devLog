@@ -6,30 +6,28 @@
           <el-icon class="title-icon"><ChatLineSquare /></el-icon>
           面试题库
         </span>
-        <div class="view-more">
+        <div class="view-more" @click="$router.push('/home/interview')">
           查看更多<el-icon><ArrowRight /></el-icon>
         </div>
       </div>
     </template>
     <div class="interview-content">
       <div class="category-list">
-        <div v-for="(q, index) in questions" :key="index" class="category-item">
+        <div v-for="(q, index) in questions" :key="index" class="category-item" @click="$router.push({ name: 'Interview', state: { title: q.title } })">
           <span class="dot"></span>
           <span class="name">
             <span class="question-title">{{ q.title }}</span>
             <span class="question-meta">
-              （{{ q.topic }}，
-              <el-icon class="status-icon" :class="q.status"><component :is="statusIconMap[q.status]" /></el-icon>
-              ）
+              <el-tag size="small" :type="statusTagType(q.status)">{{ statusLabel(q.status) }}</el-tag>
             </span>
           </span>
           <el-icon class="arrow"><ArrowRight /></el-icon>
         </div>
       </div>
       <div class="actions">
-        <el-button type="primary" class="random-btn">
-          <el-icon><Aim /></el-icon>
-          随机抽一道
+        <el-button type="primary" class="go-btn" @click="$router.push('/home/interview')">
+          进入题库
+          <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
     </div>
@@ -37,30 +35,24 @@
 </template>
 
 <script lang="ts" setup>
-import { markRaw, onMounted, ref } from 'vue'
-import { ChatLineSquare, ArrowRight, Aim, StarFilled, RefreshRight, CircleCheck } from '@element-plus/icons-vue'
+import { onMounted, ref } from 'vue'
+import { ChatLineSquare, ArrowRight } from '@element-plus/icons-vue'
 import { getInterviewApi, type InterviewRes } from '@/api/interview'
-
-type QuestionStatus = 'unknown' | 'reviewing' | 'mastered'
 
 interface QuestionItem {
   title: string
-  topic: string
-  status: QuestionStatus
+  category: string
+  status: string
 }
 
 const questions = ref<QuestionItem[]>([])
 
-const statusMap: Record<string, QuestionStatus> = {
-  todo: 'unknown',
-  learning: 'reviewing',
-  mastered: 'mastered'
-}
+const statusLabel = (s: string) => ({ todo: '待整理', learning: '学习中', mastered: '已掌握' }[s] || s)
 
-const statusIconMap: Record<QuestionStatus, unknown> = {
-  unknown: markRaw(StarFilled),
-  reviewing: markRaw(RefreshRight),
-  mastered: markRaw(CircleCheck)
+const statusTagType = (s: string): 'info' | 'warning' | 'success' => {
+  if (s === 'mastered') return 'success'
+  if (s === 'learning') return 'warning'
+  return 'info'
 }
 
 onMounted(async () => {
@@ -70,8 +62,8 @@ onMounted(async () => {
     if (Array.isArray(list) && list.length > 0) {
       questions.value = list.slice(0, 5).map((q) => ({
         title: q.title,
-        topic: q.category || '',
-        status: statusMap[q.status] || 'unknown'
+        category: q.category || '',
+        status: q.status || 'todo'
       }))
     }
   } catch {
@@ -162,6 +154,7 @@ onMounted(async () => {
 
 .name {
   flex: 1;
+  text-align: left;
 }
 
 .question-title {
@@ -169,30 +162,7 @@ onMounted(async () => {
 }
 
 .question-meta {
-  color: #606266;
-  margin-left: 6px;
-}
-
-.status-icon {
-  font-size: 14px;
-  vertical-align: -2px;
-}
-
-.status-icon.unknown {
-  color: #e6a23c;
-}
-
-.status-icon.reviewing {
-  color: #409eff;
-}
-
-.status-icon.mastered {
-  color: #67c23a;
-}
-
-.arrow {
-  font-size: 12px;
-  color: #c0c4cc;
+  margin-left: 8px;
 }
 
 .actions {
@@ -201,18 +171,12 @@ onMounted(async () => {
   align-items: center;
 }
 
-.random-btn {
+.go-btn {
   flex: 1;
   border-radius: 12px;
   height: 40px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
-}
-
-.more-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
 }
 
 :deep(.el-card__header) {

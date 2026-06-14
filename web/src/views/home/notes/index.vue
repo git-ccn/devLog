@@ -297,12 +297,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Search, CollectionTag, EditPen, Calendar, DocumentAdd, Notebook, Delete } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import VirtualList from '@/components/VirtualList.vue'
-import { useRoute } from 'vue-router'
 import {
   addNoteApi,
   deleteNoteApi,
@@ -345,7 +344,7 @@ type NoteOption = {
   count?: number
 }
 
-const route = useRoute()
+
 const notes = ref<NoteItem[]>([])
 
 const query = ref({
@@ -726,17 +725,18 @@ const updateListHeight = () => {
   listHeight.value = Math.max(0, listRef.value?.clientHeight || 0)
 }
 
-const syncKeywordFromRoute = () => {
-  const raw = route.query.keyword
-  const nextValue = Array.isArray(raw) ? String(raw[0] ?? '') : String(raw ?? '')
-  const keyword = nextValue.trim()
-  if (keyword !== query.value.keyword) {
+const applyKeywordFromState = () => {
+  const state = history.state as any
+  const keyword = (state?.keyword || '').toString().trim()
+  if (keyword && keyword !== query.value.keyword) {
     query.value.keyword = keyword
   }
 }
 
+// setup 阶段设置 keyword，watcher 或 onMounted 会触发查询
+applyKeywordFromState()
+
 onMounted(() => {
-  syncKeywordFromRoute()
   nextTick(updateListHeight)
   window.addEventListener('resize', updateListHeight)
   void loadNoteTags()
@@ -747,6 +747,11 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', updateListHeight)
+})
+
+// keep-alive 重新激活时读取 state 中的 keyword
+onActivated(() => {
+  applyKeywordFromState()
 })
 
 watch(
@@ -777,12 +782,6 @@ watch(
   }
 )
 
-watch(
-  () => route.query.keyword,
-  () => {
-    syncKeywordFromRoute()
-  }
-)
 </script>
 
 <style scoped>

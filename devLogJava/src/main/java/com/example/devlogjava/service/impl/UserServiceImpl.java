@@ -52,7 +52,7 @@ public class UserServiceImpl implements UserService {
         }
         
         // 4. 生成 Token
-        String token = jwtUtils.createToken(user.getPhone());
+        String token = jwtUtils.createToken(user.getId(), user.getPhone());
         
         // 5. 脱敏处理：去掉密码和手机号
         user.setPassword(null);

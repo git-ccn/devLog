@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.devlogjava.common.IdUtils;
 import com.example.devlogjava.common.Result;
+import com.example.devlogjava.common.SecurityUtils;
 import com.example.devlogjava.entity.note.NoteNoteTagPo;
 import com.example.devlogjava.entity.note.NoteOptionPo;
 import com.example.devlogjava.entity.note.NotePo;
@@ -184,15 +185,17 @@ public class NoteServiceImpl implements NoteService {
         if (categoryId == null) {
             throw new IllegalArgumentException("请输入分类");
         }
-        if (note.getContent() == null || note.getContent().isBlank()) {
-            throw new IllegalArgumentException("请输入正文");
-        }
-
         if (create) {
+            String userId = SecurityUtils.getCurrentUserId();
+            if (userId == null || userId.isBlank()) {
+                throw new RuntimeException("用户未登录");
+            }
             note.setId(IdUtils.defaultId(note.getId(), "note-"));
             note.setDeleted(note.getDeleted() == null ? 0 : note.getDeleted());
+            note.setUserId(userId);
         } else {
             note.setId(note.getId().trim());
+            note.setUserId(null); // 更新时不修改 userId
         }
         note.setTitle(note.getTitle().trim());
         note.setSummary(note.getSummary() == null ? "" : note.getSummary().trim());

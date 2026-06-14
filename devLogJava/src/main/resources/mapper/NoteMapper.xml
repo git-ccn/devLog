@@ -12,6 +12,7 @@
             content,
             category,
             category_id,
+            user_id,
             status,
             read_time,
             deleted,
@@ -24,6 +25,7 @@
             #{content},
             #{category},
             #{categoryId},
+            #{userId},
             #{status},
             #{readTime},
             #{deleted},
@@ -110,6 +112,9 @@
 
     <sql id="noteWhere">
         AND n.deleted = 0
+        <if test="query.userId != null and query.userId != ''">
+            AND n.user_id = #{query.userId}
+        </if>
         <if test="query.categoryId != null and query.categoryId != ''">
             AND n.category_id = #{query.categoryId}
         </if>
@@ -138,6 +143,7 @@
                n.summary,
                n.content,
                IFNULL(c.name, n.category) AS category,
+               n.user_id,
                n.status,
                n.read_time,
                n.deleted,
@@ -157,6 +163,7 @@
                n.summary,
                n.content,
                IFNULL(c.name, n.category) AS category,
+               n.user_id,
                n.status,
                n.read_time,
                n.deleted,
@@ -213,5 +220,13 @@
                SUM(CASE WHEN n.updated_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN 1 ELSE 0 END) AS month
         FROM note_note n
         WHERE n.deleted = 0
+    </select>
+
+    <select id="countByDate" resultType="map">
+        SELECT DATE(created_at) AS day, COUNT(*) AS count
+        FROM note_note
+        WHERE created_at >= #{startDate} AND deleted = 0
+        GROUP BY DATE(created_at)
+        ORDER BY day ASC
     </select>
 </mapper>

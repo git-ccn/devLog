@@ -11,6 +11,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface NoteMapper {
@@ -41,4 +42,6 @@ public interface NoteMapper {
     List<NoteOptionPo> queryCategories();
 
     NoteStatsPo queryStats();
+
+    List<Map<String, Object>> countByDate(@Param("startDate") String startDate);
 }

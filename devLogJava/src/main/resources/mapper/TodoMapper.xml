@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.devlogjava.mapper.TodoMapper">
+
+    <select id="queryByUserId" resultType="TodoPo">
+        SELECT id, title, status, user_id, created_at, updated_at
+        FROM devlog_todo
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <insert id="insert">
+        INSERT INTO devlog_todo (id, title, status, user_id, created_at, updated_at)
+        VALUES (#{id}, #{title}, #{status}, #{userId}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE devlog_todo
+        SET title = #{title}, status = #{status}, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM devlog_todo WHERE id = #{id}
+    </delete>
+
+</mapper>

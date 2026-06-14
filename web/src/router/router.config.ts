@@ -20,6 +20,7 @@ export const routes: Array<RouteRecordRaw> = [
       {
         path: 'dashboard',
         name: 'Dashboard',
+        meta: { noCache: true },
         component: () => import('@/views/home/dashboard/index.vue')
       },
       {

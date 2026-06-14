@@ -52,4 +52,25 @@
         WHERE id = #{interviewId}
     </update>
 
+    <select id="randomExam" resultType="com.example.devlogjava.entity.interview.InterviewPo">
+        SELECT i.id, i.title, i.category_id AS categoryId, i.status, i.difficulty, i.question,
+               c.name AS categoryName,
+               a.answer AS myAnswer,
+               a.accuracy AS accuracy,
+               a.solution AS solution,
+               i.created_at AS createdAt, i.updated_at AS updatedAt
+        FROM interview i
+        LEFT JOIN note_category c ON c.id = i.category_id
+        LEFT JOIN interview_ans a ON a.interview_id = i.id
+        WHERE i.status IN ('learning', 'mastered')
+        ORDER BY RAND()
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByStatus" resultType="map">
+        SELECT status, COUNT(*) AS count
+        FROM interview
+        GROUP BY status
+    </select>
+
 </mapper>

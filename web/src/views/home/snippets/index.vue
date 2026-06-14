@@ -253,11 +253,10 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onActivated, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { useRoute } from 'vue-router'
 import MonacoEditor from './MonacoEditor.vue'
 import VirtualList from '@/components/VirtualList.vue'
 import {
@@ -306,7 +305,6 @@ const languages = ref<Language[]>([])
 
 const items = ref<SnippetItem[]>([])
 const countItems = ref<SnippetItem[]>([])
-const route = useRoute()
 
 const query = reactive({
   keyword: '',
@@ -746,13 +744,26 @@ const formatDate = (ts: number) => {
   )}`
 }
 
+const applyKeywordFromState = () => {
+  const state = history.state as any
+  const keyword = state?.keyword
+  if (keyword) query.keyword = String(keyword)
+}
+
+// setup 阶段设置 keyword，watcher 或 onMounted 会触发查询
+applyKeywordFromState()
+
 onMounted(() => {
-  query.keyword = typeof route.query.keyword === 'string' ? route.query.keyword : ''
   void loadLanguages()
   void loadTags()
   void loadSnippets()
   void loadSnippetCounts()
 })
+
+onActivated(() => {
+  applyKeywordFromState()
+})
+
 </script>
 
 <style scoped>

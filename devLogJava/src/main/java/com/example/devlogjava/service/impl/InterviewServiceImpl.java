@@ -1,6 +1,7 @@
 package com.example.devlogjava.service.impl;
 
 import com.example.devlogjava.common.Result;
+import com.example.devlogjava.entity.interview.ExamGradeReq;
 import com.example.devlogjava.entity.interview.InterviewAnsPo;
 import com.example.devlogjava.entity.interview.InterviewPo;
 import com.example.devlogjava.entity.interview.InterviewQueryPo;
@@ -16,11 +17,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -51,6 +56,17 @@ public class InterviewServiceImpl implements InterviewService {
             题目：%s
             
             用户作答：%s
+            """;
+
+    private static final String GRADE_PROMPT = """
+            你是一位资深面试官。请批改以下面试题的用户作答，给出0-100的分数和200字以内的答案解析。
+            
+            题目：%s
+            
+            用户作答：%s
+            
+            请严格按照以下JSON格式返回（不要包含任何其他内容）：
+            {"accuracy": 数字, "solution": "答案解析（200字以内）"}
             """;
 
     @Override
@@ -85,29 +101,21 @@ public class InterviewServiceImpl implements InterviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<Map<String, Object>> addAns(InterviewAnsPo ans) {
+    public Result<?> addAns(InterviewAnsPo ans) {
         ans.setId(UUID.randomUUID().toString().replace("-", ""));
         evaluateAndFill(ans);
         interviewMapper.insertAns(ans);
         updateStatusByAccuracy(ans.getInterviewId(), ans.getAccuracy());
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", ans.getId());
-        result.put("accuracy", ans.getAccuracy());
-        result.put("solution", ans.getSolution());
-        return Result.success(result);
+        return Result.success();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<Map<String, Object>> updateAns(InterviewAnsPo ans) {
+    public Result<?> updateAns(InterviewAnsPo ans) {
         evaluateAndFill(ans);
         interviewMapper.updateAnsByInterviewId(ans.getInterviewId(), ans.getAnswer(), ans.getAccuracy(), ans.getSolution());
         updateStatusByAccuracy(ans.getInterviewId(), ans.getAccuracy());
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("id", ans.getInterviewId());
-        result.put("accuracy", ans.getAccuracy());
-        result.put("solution", ans.getSolution());
-        return Result.success(result);
+        return Result.success();
     }
 
     @Override
@@ -125,6 +133,79 @@ public class InterviewServiceImpl implements InterviewService {
             map.put("name", po.getName());
             return map;
         }).collect(Collectors.toList());
+        return Result.success(result);
+    }
+
+    @Override
+    public Result<List<Map<String, Object>>> exam(int count) {
+        List<InterviewPo> list = interviewMapper.randomExam(count);
+        if (list == null) {
+            list = Collections.emptyList();
+        }
+        if (list.size() < 1) {
+            return Result.error("可考试题目不足10道，请先多学习一些题目");
+        }
+        List<Map<String, Object>> result = list.stream().map(po -> {
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", po.getId());
+            map.put("title", po.getTitle());
+            map.put("category", po.getCategoryName());
+            map.put("categoryId", po.getCategoryId());
+            map.put("status", po.getStatus());
+            map.put("difficulty", po.getDifficulty());
+            map.put("question", po.getQuestion());
+            map.put("myAnswer", po.getMyAnswer());
+            map.put("accuracy", po.getAccuracy());
+            map.put("solution", po.getSolution());
+            return map;
+        }).collect(Collectors.toList());
+        return Result.success(result);
+    }
+
+    @Override
+    public Result<List<Map<String, Object>>> grade(ExamGradeReq req) {
+        if (req == null || req.getItems() == null || req.getItems().isEmpty()) {
+            return Result.error("无可批改的题目");
+        }
+
+        List<ExamGradeReq.ExamItem> items = req.getItems();
+        List<Map<String, Object>> result = new ArrayList<>(Collections.nCopies(items.size(), null));
+        ExecutorService executor = Executors.newFixedThreadPool(Math.min(items.size(), 5));
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            final int idx = i;
+            final ExamGradeReq.ExamItem item = items.get(i);
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put("id", item.getId());
+            map.put("accuracy", null);
+            map.put("solution", null);
+            result.set(idx, map);
+
+            if (item.getAnswer() != null && !item.getAnswer().isBlank()) {
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                    try {
+                        String prompt = String.format(GRADE_PROMPT, item.getQuestion(), item.getAnswer());
+                        String aiResponse = chatLanguageModel.chat(prompt);
+                        String json = extractJson(aiResponse);
+                        JsonNode node = objectMapper.readTree(json);
+                        if (node.has("accuracy")) {
+                            map.put("accuracy", node.get("accuracy").asDouble());
+                        }
+                        if (node.has("solution")) {
+                            map.put("solution", node.get("solution").asText());
+                        }
+                        log.info("批卷完成 examItemId={} accuracy={}", item.getId(), map.get("accuracy"));
+                    } catch (Exception e) {
+                        log.error("批卷失败 examItemId={}", item.getId(), e);
+                    }
+                }, executor);
+                futures.add(future);
+            }
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        executor.shutdown();
         return Result.success(result);
     }
 
