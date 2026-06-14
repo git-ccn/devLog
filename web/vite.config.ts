@@ -25,6 +25,23 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        chunkFileNames: 'js/[name]-[hash].js',
+        entryFileNames: 'js/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          if (/\.(png|jpe?g|gif|svg|webp|ico|avif)$/i.test(assetInfo.name ?? '')) {
+            return 'img/[name]-[hash][extname]'
+          }
+          if (/\.(css|scss|less)$/i.test(assetInfo.name ?? '')) {
+            return 'css/[name]-[hash][extname]'
+          }
+          return 'assets/[name]-[hash][extname]'
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': '/src'

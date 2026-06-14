@@ -29,8 +29,9 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### 本地配置（含敏感信息） ###
+### 本地 / 生产配置（含敏感信息） ###
 application-local.yml
+application-pro.yml
 
 ### VS Code ###
 .vscode/
