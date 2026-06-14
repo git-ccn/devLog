@@ -29,5 +29,5 @@ deepseek:
   base-url: https://api.deepseek.com
   model-name: deepseek-v4-flash
 server:
-  port: 8081
+  port: 8082
 

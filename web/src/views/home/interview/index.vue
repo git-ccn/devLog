@@ -473,14 +473,17 @@ const updateListHeight = () => {
   listHeight.value = Math.max(0, listRef.value?.clientHeight || 0)
 }
 
-const applyTitleFromState = () => {
+const applyKeywordFromState = () => {
   const state = history.state as any
-  const title = state?.title
-  if (title) query.keyword = String(title)
+  const keyword = state?.title
+  // 只有当 state 中有实际 title 值时才覆盖 query，避免从其他 tab 切回时被 undefined 清空
+  if (keyword !== undefined && keyword !== query.keyword) {
+    query.keyword = String(keyword)
+  }
 }
 
 // setup 阶段设置 keyword，onMounted 中 loadFromServer 会用到
-applyTitleFromState()
+applyKeywordFromState()
 
 onMounted(async () => {
   await loadFromServer()
@@ -495,9 +498,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateListHeight)
 })
 
-// keep-alive 重新激活时，重新设置 keyword 并查询
+// keep-alive 重新激活时，读取 state 中的 keyword
 onActivated(() => {
-  applyTitleFromState()
+  applyKeywordFromState()
 })
 
 watch(
@@ -511,6 +514,17 @@ watch(
     if (activeItem.value) return
     activeId.value = items.value[0]?.id || ''
     syncDraft()
+  }
+)
+
+let keywordTimer: ReturnType<typeof setTimeout> | undefined
+watch(
+  () => query.keyword,
+  () => {
+    if (keywordTimer) clearTimeout(keywordTimer)
+    keywordTimer = setTimeout(() => {
+      void loadFromServer()
+    }, 300)
   }
 )
 </script>

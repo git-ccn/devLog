@@ -747,11 +747,12 @@ const formatDate = (ts: number) => {
 const applyKeywordFromState = () => {
   const state = history.state as any
   const keyword = state?.keyword
-  if (keyword) query.keyword = String(keyword)
+  console.log('keyword', keyword, query.keyword)
+  // 只有当 state 中有实际 keyword 值时才覆盖 query，避免从其他 tab 切回时被 undefined 清空
+  if (keyword !== undefined && keyword !== query.keyword){
+    query.keyword = keyword
+  }
 }
-
-// setup 阶段设置 keyword，watcher 或 onMounted 会触发查询
-applyKeywordFromState()
 
 onMounted(() => {
   void loadLanguages()
@@ -761,6 +762,8 @@ onMounted(() => {
 })
 
 onActivated(() => {
+  console.log('actived===');
+  
   applyKeywordFromState()
 })
 

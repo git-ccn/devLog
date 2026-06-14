@@ -15,10 +15,11 @@ export default defineConfig({
       resolvers: [ElementPlusResolver()],
     }),
   ],
+  base: '/devlog/',
   server: {
     proxy: {
       '/devLog': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:8082',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/devLog/, ''),
